@@ -1,0 +1,17 @@
+D:\HSServer\Bin\Debug\HSServer.deps.json
+D:\HSServer\Bin\Debug\HSServer.runtimeconfig.json
+D:\HSServer\Bin\Debug\HSServer.exe
+D:\HSServer\Bin\Debug\Hotfix.deps.json
+D:\HSServer\Bin\Debug\Hotfix.dll
+D:\HSServer\Bin\Debug\Hotfix.pdb
+D:\HSServer\Hotfix\obj\Debug\Hotfix.csproj.AssemblyReference.cache
+D:\HSServer\Hotfix\obj\Debug\Hotfix.GeneratedMSBuildEditorConfig.editorconfig
+D:\HSServer\Hotfix\obj\Debug\Hotfix.AssemblyInfoInputs.cache
+D:\HSServer\Hotfix\obj\Debug\Hotfix.AssemblyInfo.cs
+D:\HSServer\Hotfix\obj\Debug\Hotfix.csproj.CoreCompileInputs.cache
+D:\HSServer\Hotfix\obj\Debug\Hotfix.sourcelink.json
+D:\HSServer\Hotfix\obj\Debug\Hotfix.csproj.Up2Date
+D:\HSServer\Hotfix\obj\Debug\Hotfix.dll
+D:\HSServer\Hotfix\obj\Debug\refint\Hotfix.dll
+D:\HSServer\Hotfix\obj\Debug\Hotfix.pdb
+D:\HSServer\Hotfix\obj\Debug\ref\Hotfix.dll

@@ -1,0 +1,15 @@
+D:\HSServer\bin\Debug\net8.0\HSServer.exe
+D:\HSServer\bin\Debug\net8.0\HSServer.deps.json
+D:\HSServer\bin\Debug\net8.0\HSServer.runtimeconfig.json
+D:\HSServer\bin\Debug\net8.0\HSServer.dll
+D:\HSServer\bin\Debug\net8.0\HSServer.pdb
+D:\HSServer\obj\Debug\net8.0\HSServer.GeneratedMSBuildEditorConfig.editorconfig
+D:\HSServer\obj\Debug\net8.0\HSServer.AssemblyInfoInputs.cache
+D:\HSServer\obj\Debug\net8.0\HSServer.AssemblyInfo.cs
+D:\HSServer\obj\Debug\net8.0\HSServer.csproj.CoreCompileInputs.cache
+D:\HSServer\obj\Debug\net8.0\HSServer.sourcelink.json
+D:\HSServer\obj\Debug\net8.0\HSServer.dll
+D:\HSServer\obj\Debug\net8.0\refint\HSServer.dll
+D:\HSServer\obj\Debug\net8.0\HSServer.pdb
+D:\HSServer\obj\Debug\net8.0\HSServer.genruntimeconfig.cache
+D:\HSServer\obj\Debug\net8.0\ref\HSServer.dll
