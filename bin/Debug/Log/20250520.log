@@ -1,0 +1,177 @@
+2025-05-20 17:36:57.7387 Info Core.Logger.Init Logger initialized for process 5576
+2025-05-20 17:36:57.8002 Info Core.Logger.Info [PID:5576] 打印日志
+2025-05-20 17:38:55.6770 Info Core.Logger.Init Logger initialized for process 16864
+2025-05-20 17:38:55.7414 Info Core.Logger.Info [PID:16864] 打印info
+2025-05-20 17:38:55.7434 Warn Core.Logger.Warn [PID:16864] 打印warn
+2025-05-20 17:38:55.7435 Debug Core.Logger.Debug [PID:16864] 打印debug
+2025-05-20 17:38:55.7437 Error Core.Logger.Error [PID:16864] 打印error
+2025-05-20 17:42:15.3360 Info Core.Logger.Init Logger initialized for process 9388
+2025-05-20 17:42:15.4006 Info Core.Logger.Info [PID:9388] 打印info
+2025-05-20 17:42:15.4034 Warn Core.Logger.Warn [PID:9388] 打印warn
+2025-05-20 17:42:15.4036 Debug Core.Logger.Debug [PID:9388] 打印debug
+2025-05-20 17:42:15.4037 Error Core.Logger.Error [PID:9388] 打印error
+17:43:09.8705 Info Core.Logger.Init Logger initialized for process 36520
+17:43:09.9349 Info Core.Logger.Info [PID:36520] 打印info
+17:43:09.9370 Warn Core.Logger.Warn [PID:36520] 打印warn
+17:43:09.9372 Debug Core.Logger.Debug [PID:36520] 打印debug
+17:43:09.9373 Error Core.Logger.Error [PID:36520] 打印error
+[09:48:11.4991] [Info] Logger initialized for process 3724
+[09:48:11.5418] [Info] [PID:3724] 打印info
+[09:48:11.5437] [Warn] [PID:3724] 打印warn
+[09:48:11.5438] [Debug] [PID:3724] 打印debug
+[09:48:11.5439] [Error] [PID:3724] 打印error
+[17:49:34.8502] [Info] Logger initialized for process 26568
+[17:49:34.8925] [Info] [PID:26568] 打印info
+[17:49:34.8944] [Warn] [PID:26568] 打印warn
+[17:49:34.8945] [Debug] [PID:26568] 打印debug
+[17:49:34.8946] [Error] [PID:26568] 打印error
+[17:51:27.5915] [Info] [Logger initialized for process]8528
+[17:51:27.6331] [Info] 打印info
+[17:51:27.6336] [Warn] 打印warn
+[17:51:27.6337] [Debug] 打印debug
+[17:51:27.6338] [Error] 打印error
+[18:03:42.6538][Info]:[Logger initialized for process]41868
+[18:03:42.6958][Info]:打印info
+[18:03:42.6963][Warn]:打印warn
+[18:03:42.6964][Debug]:打印debug
+[18:03:42.6965][Error]:打印error
+[18:05:42.0738][Info]:[Logger initialized for process]10160
+[18:05:42.1019][Info]:打印info
+[18:05:42.1025][Warn]:打印warn
+[18:05:42.1032][Debug]:打印debug
+[18:05:42.1033][Error]:打印error
+[18:07:57.7310][Info]:[Logger initialized for process]12528
+[18:07:57.7575][Info]:打印info
+[18:07:57.7580][Warn]:打印warn
+[18:07:57.7587][Debug]:打印debug
+[18:07:57.7588][Error]:打印error
+[18:14:36.7040][Info]:[Logger initialized for process]34440
+[18:14:36.7309][Info]:打印info
+[18:14:36.7315][Warn]:打印warn
+[18:14:36.7318][Debug]:打印debug
+[18:14:36.7319][Error]:打印error
+[18:16:15.1542][Info]:[Logger initialized for process]30424
+[18:16:15.1821][Info]:打印info
+[18:16:15.1829][Warn]:打印warn
+[18:16:15.1832][Debug]:打印debug
+[18:16:15.1834][Error]:打印error
+[18:16:42.3425][Info]:[Logger initialized for process]34420
+[18:16:42.3696][Info]:打印info
+[18:16:42.3702][Warn]:打印warn
+[18:16:42.3705][Debug]:打印debug
+[18:16:42.3706][Error]:打印error
+[18:18:08.7349][Info]:[Logger initialized for process]10040
+[18:18:08.7603][Info]:打印info
+[18:18:08.7608][Warn]:打印warn
+[18:18:08.7611][Debug]:打印debug
+[18:18:08.7612][Error]:打印error
+[18:18:21.7715][Info]:[Logger initialized for process]37964
+[18:18:21.8006][Info]:打印info
+[18:18:21.8011][Warn]:打印warn
+[18:18:21.8014][Debug]:打印debug
+[18:18:21.8015][Error]:打印error
+[18:19:20.7063][Info]:[Logger initialized for process]25856
+[18:19:20.7347][Info]:打印info
+[18:19:20.7352][Warn]:打印warn
+[18:19:20.7355][Debug]:打印debug
+[18:19:20.7356][Error]:打印error
+[18:20:47.1543][Info]:[Logger initialized for process]10416
+[18:20:47.1819][Info]:打印info
+[18:20:47.1824][Warn]:打印warn
+[18:20:47.1826][Debug]:打印debug
+[18:20:47.1827][Error]:打印error
+[18:21:49.0657][Info]:[Logger initialized for process]22660
+[18:21:49.0916][Info]:打印info
+[18:21:49.0921][Warn]:打印warn
+[18:21:49.0924][Debug]:打印debug
+[18:21:49.0926][Error]:打印error
+[18:22:29.9062][Info]:[Logger initialized for process]4484
+[18:22:29.9323][Info]:打印info
+[18:22:29.9328][Warn]:打印warn
+[18:22:29.9330][Debug]:打印debug
+[18:22:29.9331][Error]:打印error
+[18:23:22.5383][Info]:[Logger initialized for process]13904
+[18:23:22.5658][Info]:打印info
+[18:23:22.5664][Warn]:打印warn
+[18:23:22.5667][Debug]:打印debug
+[18:23:22.5668][Error]:打印error
+[18:25:38.0760][Info]:[Logger initialized for process]24452
+[18:25:38.1025][Info]:打印info
+[18:25:38.1031][Warn]:打印warn
+[18:25:38.1033][Debug]:打印debug
+[18:25:38.1035][Error]:打印error
+[18:26:46.6400][Info]:[Logger initialized for process]39996
+[18:26:46.6673][Info]:打印info
+[18:26:46.6678][Warn]:打印warn
+[18:26:46.6680][Debug]:打印debug
+[18:26:46.6683][Error]:打印error
+[18:29:02.5468][Info]:[Logger initialized for process]40012
+[18:29:02.5768][Info]:打印info
+[18:29:02.5774][Warn]:打印warn
+[18:29:02.5778][Debug]:打印debug
+[18:29:02.5780][Error]:打印error
+[18:54:46.5040][Info]:[Logger initialized for process]8112
+[18:54:46.5313][Info]:打印info
+[18:54:46.5318][Warn]:打印warn
+[18:54:46.5321][Debug]:打印debug
+[18:54:46.5322][Error]:打印error
+[18:55:10.3648][Info]:[Logger initialized for process]37828
+[18:55:10.3918][Info]:打印info
+[18:55:10.3923][Warn]:打印warn
+[18:55:10.3925][Debug]:打印debug
+[18:55:10.3926][Error]:打印error
+[19:08:46.7952][Info]:[Logger initialized for process]19892
+[19:08:46.8273][Info]:打印info
+[19:08:46.8280][Warn]:打印warn
+[19:08:46.8282][Debug]:打印debug
+[19:08:46.8284][Error]:打印error
+[19:09:00.9409][Info]:[Logger initialized for process]3412
+[19:09:00.9696][Info]:打印info
+[19:09:00.9706][Warn]:打印warn
+[19:09:00.9710][Debug]:打印debug
+[19:09:00.9712][Error]:打印error
+[19:10:12.9296][Info]:[Logger initialized for process]2716
+[19:10:12.9559][Info]:打印info
+[19:10:12.9565][Warn]:打印warn
+[19:10:12.9568][Debug]:打印debug
+[19:10:12.9570][Error]:打印error
+[19:34:06.3946][Info]:[Logger initialized for process]38412
+[19:34:06.4204][Info]:打印info
+[19:34:06.4209][Warn]:打印warn
+[19:34:06.4212][Debug]:打印debug
+[19:34:06.4213][Error]:打印error
+[19:35:33.8054][Info]:[Logger initialized for process]36924
+[19:35:33.8322][Info]:打印info
+[19:35:33.8326][Warn]:打印warn
+[19:35:33.8329][Debug]:打印debug
+[19:35:33.8330][Error]:打印error
+[19:36:18.9876][Info]:[Logger initialized for process]19868
+[19:36:19.0172][Info]:打印info
+[19:36:19.0179][Warn]:打印warn
+[19:36:19.0183][Debug]:打印debug
+[19:36:19.0185][Error]:打印error
+[19:37:59.9280][Info]:[Logger initialized for process]25940
+[19:37:59.9553][Info]:打印info
+[19:37:59.9557][Warn]:打印warn
+[19:37:59.9560][Debug]:打印debug
+[19:37:59.9561][Error]:打印error
+[19:38:18.3588][Info]:[Logger initialized for process]34092
+[19:38:18.3970][Info]:打印info
+[19:38:18.3980][Warn]:打印warn
+[19:38:18.3984][Debug]:打印debug
+[19:38:18.3989][Error]:打印error
+[19:38:30.8292][Info]:[Logger initialized for process]31804
+[19:38:30.8811][Info]:打印info
+[19:38:30.8819][Warn]:打印warn
+[19:38:30.8822][Debug]:打印debug
+[19:38:30.8824][Error]:打印error
+[19:38:39.5238][Info]:[Logger initialized for process]14820
+[19:38:39.5508][Info]:打印info
+[19:38:39.5514][Warn]:打印warn
+[19:38:39.5517][Debug]:打印debug
+[19:38:39.5518][Error]:打印error
+[19:40:38.6810][Info]:[Logger initialized for process]13288
+[19:40:38.7076][Info]:打印info
+[19:40:38.7082][Warn]:打印warn
+[19:40:38.7085][Debug]:打印debug
+[19:40:38.7087][Error]:打印error

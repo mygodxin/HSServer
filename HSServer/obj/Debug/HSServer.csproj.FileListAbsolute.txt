@@ -1,3 +1,4 @@
+D:\HSServer\Bin\Debug\Config\NLog.config
 D:\HSServer\Bin\Debug\HSServer.exe
 D:\HSServer\Bin\Debug\HSServer.deps.json
 D:\HSServer\Bin\Debug\HSServer.runtimeconfig.json

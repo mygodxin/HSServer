@@ -11,9 +11,9 @@ namespace HSServer
     }
 
     /// <summary>
-    /// 热更启动入口
+    /// 热更完成后立刻运行
     /// </summary>
-    public interface IHotfixStart
+    public interface IHotfixRun
     {
         public Task Run(params string[] args);
     }
@@ -73,11 +73,11 @@ namespace HSServer
                 var types = pair.Value;
                 foreach (var type in types)
                 {
-                    var hotfixStart = type.GetInterface(typeof(IHotfixStart).FullName);
+                    var hotfixStart = type.GetInterface(typeof(IHotfixRun).FullName);
                     if (hotfixStart != null)
                     {
                         var hotfix = Activator.CreateInstance(type);
-                        ((IHotfixStart)hotfix).Run();
+                        ((IHotfixRun)hotfix).Run();
                     }
                 }
             }

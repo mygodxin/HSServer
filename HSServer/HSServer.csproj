@@ -21,15 +21,24 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="Config\NLog.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <ProjectReference Include="..\Core\Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MongoDB.Driver" Version="3.4.0" />
-    <PackageReference Include="NLog" Version="5.4.0" />
-    <PackageReference Include="Proto.Actor" Version="1.7.0" />
+    <None Update="Config\NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+      <!-- 单个文件示例 -->
+    <!-- <Content Include="$(SolutionDir)..\external-config.json">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content> -->
+
+    <!-- 批量复制上级目录中Configs文件夹下的所有文件 -->
+    <!-- <Content Include="$(SolutionDir)\Config\*.*">
+      <Link>Config\NLog.config</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory> -->
+    <!-- </Content> -->
   </ItemGroup>
 
 </Project>

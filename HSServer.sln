@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HSServer", "HSServer\HSServ
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hotfix", "Hotfix\Hotfix.csproj", "{F8131DBC-9D6A-5339-F92B-25575FBD7399}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "Core\Core.csproj", "{A2598F72-61E7-4792-BE90-99467DF5E9C9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{F8131DBC-9D6A-5339-F92B-25575FBD7399}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F8131DBC-9D6A-5339-F92B-25575FBD7399}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F8131DBC-9D6A-5339-F92B-25575FBD7399}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2598F72-61E7-4792-BE90-99467DF5E9C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2598F72-61E7-4792-BE90-99467DF5E9C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2598F72-61E7-4792-BE90-99467DF5E9C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2598F72-61E7-4792-BE90-99467DF5E9C9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

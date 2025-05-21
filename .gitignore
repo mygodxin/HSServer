@@ -1,0 +1,7 @@
+# Visual Studio临时文件
+.vs/
+*.vsidx
+*.suo
+*.user
+*.userosscache
+*.sln.docstates

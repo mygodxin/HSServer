@@ -2,13 +2,11 @@
 using HSServer;
 using NLog;
 
-namespace HotUpdate
+namespace Hotfix
 {
     [Hotfix]
-    public class PlayerMatchModule : IHotfixStart
+    public class PlayerMatchModule : IHotfixRun
     {
-        static readonly Logger Log = LogManager.GetCurrentClassLogger();
-
         public Task Run(params string[] args)
         {
             Console.WriteLine("你好啊2222");
