@@ -9,6 +9,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hotfix", "Hotfix\Hotfix.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "Core\Core.csproj", "{A2598F72-61E7-4792-BE90-99467DF5E9C9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Share", "Share\Share.csproj", "{477B9143-3093-4598-BA33-DFBAC120EF6A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LoginServer", "LoginServer\LoginServer.csproj", "{F1E7BD61-2C42-4C4B-96BC-4FEFCD34CAEC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +31,14 @@ Global
 		{A2598F72-61E7-4792-BE90-99467DF5E9C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A2598F72-61E7-4792-BE90-99467DF5E9C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A2598F72-61E7-4792-BE90-99467DF5E9C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{477B9143-3093-4598-BA33-DFBAC120EF6A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{477B9143-3093-4598-BA33-DFBAC120EF6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{477B9143-3093-4598-BA33-DFBAC120EF6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{477B9143-3093-4598-BA33-DFBAC120EF6A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1E7BD61-2C42-4C4B-96BC-4FEFCD34CAEC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1E7BD61-2C42-4C4B-96BC-4FEFCD34CAEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1E7BD61-2C42-4C4B-96BC-4FEFCD34CAEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1E7BD61-2C42-4C4B-96BC-4FEFCD34CAEC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

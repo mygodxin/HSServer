@@ -1,6 +1,7 @@
 
 using HSServer;
 using NLog;
+using Proto;
 
 namespace Hotfix
 {
@@ -12,6 +13,5 @@ namespace Hotfix
             Console.WriteLine("你好啊2222");
             return Task.CompletedTask;
         }
-
     }
 }

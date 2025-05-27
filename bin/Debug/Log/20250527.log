@@ -1,0 +1,16 @@
+[12:35:48.0478][Info]:[Logger initialized for process]29752
+[12:35:48.0807][Info]:打印info
+[12:35:48.0821][Warn]:打印warn
+[12:35:48.0824][Debug]:打印debug
+[12:35:48.0826][Error]:打印error
+[12:38:29.3665][Info]:[Logger initialized for process]27936
+[12:38:29.4009][Info]:打印info
+[12:38:29.4016][Warn]:打印warn
+[12:38:29.4019][Debug]:打印debug
+[12:38:29.4021][Error]:打印error
+[14:56:18.3523][Info]:[Logger initialized for process]24388
+[14:56:18.3818][Info]:打印info
+[14:56:18.3828][Warn]:打印warn
+[14:56:18.3831][Debug]:打印debug
+[14:56:18.3833][Error]:打印error
+[14:56:18.7630][Info]:序列化结果5555,6666
