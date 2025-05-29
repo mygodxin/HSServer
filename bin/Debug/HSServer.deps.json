@@ -369,6 +369,10 @@
         }
       },
       "LoginServer/1.0.0": {
+        "dependencies": {
+          "Core": "1.0.0",
+          "Share": "1.0.0"
+        },
         "runtime": {
           "LoginServer.dll": {
             "assemblyVersion": "1.0.0.0",

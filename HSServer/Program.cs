@@ -2,6 +2,7 @@
 
 
 using Core;
+using LoginServer;
 using Luban;
 using Share;
 
@@ -15,29 +16,34 @@ namespace HSServer
             // 初始化日志
             Logger.Init();
 
-            Logger.Info("打印info");
-            Logger.Warn("打印warn");
-            Logger.Debug("打印debug");
-            Logger.Error("打印error");
-
-            //var tables = new cfg.Tables(file => new ByteBuf(File.ReadAllBytes("../../../../GenerateDatas/bytes/" + file + ".bytes")));
-            //Console.WriteLine("== load succ ==");
-
             // 初始化代码加载
             var controller = new CodeLoader();
             controller.Init();
 
-            Console.WriteLine("输入'reload'触发热更新，'exit'退出");
+            var loginServer = new LoginServer.LoginServer(3000);
 
-            ActorTest.Test();
+            // 添加几个游戏服务器
+            loginServer.AddGameServer(new ServerInfo
+            {
+                Name = "GameServer1",
+                Ip = "192.168.1.101",
+                Port = 4000,
+                MaxPlayers = 1000
+            });
 
-            var msg = new C2SLogin();
-            msg.Account = 5555 + "";
-            msg.Password = 6666 + "";
-            //序列化测试
-            var p = HSerializer.Serialize(msg);
-            var o = HSerializer.Deserialize<C2SLogin>(p);
-            Logger.Info($"序列化结果{o.Account},{o.Password}");
+            loginServer.AddGameServer(new ServerInfo
+            {
+                Name = "GameServer2",
+                Ip = "192.168.1.102",
+                Port = 4000,
+                MaxPlayers = 1000
+            });
+
+            // 启动游戏服务器状态监控(在另一个端口)
+            _ = loginServer.StartGameServerMonitorAsync(3001);
+
+            // 启动登录服务器
+            _ = loginServer.StartAsync();
 
             while (true)
             {

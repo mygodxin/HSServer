@@ -185,7 +185,14 @@
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
-            "projectReferences": {}
+            "projectReferences": {
+              "D:\\HSServer\\Core\\Core.csproj": {
+                "projectPath": "D:\\HSServer\\Core\\Core.csproj"
+              },
+              "D:\\HSServer\\Share\\Share.csproj": {
+                "projectPath": "D:\\HSServer\\Share\\Share.csproj"
+              }
+            }
           }
         },
         "warningProperties": {

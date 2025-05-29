@@ -7,24 +7,23 @@ namespace Share
     /// 请求登陆
     /// </summary>
     [MessagePackObject(true)]
-    public class C2SLogin : Message
+    public class C2S_Login : Message
     {
-        /// <summary>
-        /// 账号
-        /// </summary>
         public string Account;
-        /// <summary>
-        /// 密码
-        /// </summary>
         public string Password;
+        public string ClientVersion;
     }
 
     /// <summary>
     /// 请求登陆回复
     /// </summary>
     [MessagePackObject(true)]
-    public class S2CLogin : Message
+    public class S2C_Login : Message
     {
-
+        public bool Success;
+        public string Message;
+        public string GameServerIp;
+        public int GameServerPort;
+        public string SessionToken;
     }
 }

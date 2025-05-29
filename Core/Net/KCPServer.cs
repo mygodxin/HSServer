@@ -88,7 +88,6 @@ namespace Core
         public ValueTask SendAsync(uint connectionId, ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default)
         {
             return default;
-            //return _transport.SendAsync(connectionId, data, cancellationToken);
         }
 
         public void DisconnectClient(uint connectionId)
