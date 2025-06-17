@@ -1,3 +1,4 @@
+using Core;
 using Share;
 using System;
 using System.Collections.Concurrent;
@@ -56,7 +57,7 @@ namespace LoginServer
                     var buffer = new byte[1024];
                     var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
                     var requestJson = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-
+                    Logger.Info($"[Server]{requestJson}");
                     var loginRequest = JsonSerializer.Deserialize<C2S_Login>(requestJson);
                     var clientIp = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
 

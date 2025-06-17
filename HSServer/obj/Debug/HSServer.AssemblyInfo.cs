@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HSServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0ca1adca7389e35cacb0b2914e31452ea918711d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+436e6a1bcb05f35c08fa75337f0d5199d390edf1")]
 [assembly: System.Reflection.AssemblyProductAttribute("HSServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HSServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
