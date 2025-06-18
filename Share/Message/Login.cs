@@ -7,18 +7,18 @@ namespace Share
     /// 请求登陆
     /// </summary>
     [MessagePackObject(true)]
-    public class C2S_Login : Message
+    public class ReqLogin : Message
     {
         public string Account;
         public string Password;
-        public string ClientVersion;
+        public string Platform;
     }
 
     /// <summary>
     /// 请求登陆回复
     /// </summary>
     [MessagePackObject(true)]
-    public class S2C_Login : Message
+    public class ResLogin : Message
     {
         public bool Success;
         public string Message;

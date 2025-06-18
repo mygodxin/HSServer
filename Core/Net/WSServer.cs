@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Core
 {
-    public class WSServer : IDisposable, ISocket
+    public class WSServer : NetChannel
     {
         private readonly HttpListener _httpListener;
         private readonly ConcurrentDictionary<Guid, ClientInfo> _connectedClients = new();

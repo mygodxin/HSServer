@@ -20,6 +20,7 @@ namespace LoginServer
         private readonly List<ServerInfo> _gameServers;
         private readonly int _maxLoginAttempts = 5;
         private readonly TimeSpan _loginCooldown = TimeSpan.FromMinutes(1);
+        private readonly MongoDbManager<UserAccount> _accountDB;
 
         public LoginServer(int port)
         {
@@ -27,6 +28,7 @@ namespace LoginServer
             _activeSessions = new ConcurrentDictionary<string, Session>();
             _loginAttempts = new ConcurrentDictionary<string, DateTime>();
             _gameServers = new List<ServerInfo>();
+            _accountDB = new MongoDbManager<UserAccount>("mongodb://localhost:27017", "Login", "Account");
         }
 
         public async Task StartAsync()
@@ -58,7 +60,7 @@ namespace LoginServer
                     var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
                     var requestJson = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                     Logger.Info($"[Server]{requestJson}");
-                    var loginRequest = JsonSerializer.Deserialize<C2S_Login>(requestJson);
+                    var loginRequest = JsonSerializer.Deserialize<ReqLogin>(requestJson);
                     var clientIp = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
 
                     var response = await ProcessLoginAsync(loginRequest, clientIp);
@@ -74,18 +76,18 @@ namespace LoginServer
             }
         }
 
-        private async Task<S2C_Login> ProcessLoginAsync(C2S_Login request, string clientIp)
+        private async Task<ResLogin> ProcessLoginAsync(ReqLogin request, string clientIp)
         {
             // 1. 验证账号密码 (简化版，实际应该查数据库)
             if (!ValidateCredentials(request.Account, request.Password))
             {
-                return new S2C_Login { Success = false, Message = "Invalid account or password" };
+                return new ResLogin { Success = false, Message = "Invalid account or password" };
             }
 
             // 2. 检查登录频率限制
             if (IsLoginFlooding(request.Account))
             {
-                return new S2C_Login
+                return new ResLogin
                 {
                     Success = false,
                     Message = "Too many login attempts. Please wait before trying again."
@@ -104,24 +106,24 @@ namespace LoginServer
             var selectedServer = SelectBestGameServer();
             if (selectedServer == null)
             {
-                return new S2C_Login { Success = false, Message = "No available game servers" };
+                return new ResLogin { Success = false, Message = "No available game servers" };
             }
 
             // 5. 创建新会话
             var newSession = new Session
             {
-                AccountId = request.Account,
+                Account = request.Account,
                 SessionToken = GenerateSessionToken(),
                 LoginTime = DateTime.UtcNow,
                 ConnectedGameServer = selectedServer.Name,
-                ClientIp = clientIp
+                RemoteAddress = clientIp
             };
 
             _activeSessions[request.Account] = newSession;
             UpdateLoginAttempts(request.Account);
 
             // 6. 返回成功响应
-            return new S2C_Login
+            return new ResLogin
             {
                 Success = true,
                 Message = "Login successful",
