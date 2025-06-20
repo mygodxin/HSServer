@@ -782,7 +782,8 @@
           "MongoDB.Driver": "3.4.0",
           "NLog": "5.4.0",
           "Proto.Actor": "1.7.0",
-          "Proto.Cluster": "1.7.0"
+          "Proto.Cluster": "1.7.0",
+          "Proto.Remote": "1.7.0"
         },
         "compile": {
           "bin/placeholder/Core.dll": {}

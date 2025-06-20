@@ -21,24 +21,9 @@ namespace HSServer
             var controller = new CodeLoader();
             controller.Init();
 
-            //var kcpServer = new KcpServer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3000));
-            //kcpServer.StartAsync();
-            var loginServer = new LoginServer.LoginServer(3000);
+            LoginServer.LoginServer.StartAsync();
 
-            // 添加几个游戏服务器
-            loginServer.AddGameServer(new ServerInfo
-            {
-                Name = "GameServer1",
-                Ip = "0.0.0.0",
-                Port = 4000,
-                MaxPlayers = 1000
-            });
-
-            // 启动游戏服务器状态监控(在另一个端口)
-            _ = loginServer.StartGameServerMonitorAsync(3001);
-
-            // 启动登录服务器
-            _ = loginServer.StartAsync();
+            GateServer.GateServer.StartAsync();
 
             while (true)
             {

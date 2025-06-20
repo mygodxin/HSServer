@@ -137,6 +137,10 @@
             "Proto.Cluster": {
               "target": "Package",
               "version": "[1.7.0, )"
+            },
+            "Proto.Remote": {
+              "target": "Package",
+              "version": "[1.7.0, )"
             }
           },
           "imports": [

@@ -69,8 +69,148 @@
             "Proto.Cluster": {
               "target": "Package",
               "version": "[1.7.0, )"
+            },
+            "Proto.Remote": {
+              "target": "Package",
+              "version": "[1.7.0, )"
             }
           },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "D:\\HSServer\\GameServer\\GameServer.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\HSServer\\GameServer\\GameServer.csproj",
+        "projectName": "GameServer",
+        "projectPath": "D:\\HSServer\\GameServer\\GameServer.csproj",
+        "packagesPath": "C:\\Users\\59358\\.nuget\\packages\\",
+        "outputPath": "D:\\HSServer\\GameServer\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\59358\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "D:\\HSServer\\Core\\Core.csproj": {
+                "projectPath": "D:\\HSServer\\Core\\Core.csproj"
+              },
+              "D:\\HSServer\\Share\\Share.csproj": {
+                "projectPath": "D:\\HSServer\\Share\\Share.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "D:\\HSServer\\GateServer\\GateServer.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\HSServer\\GateServer\\GateServer.csproj",
+        "projectName": "GateServer",
+        "projectPath": "D:\\HSServer\\GateServer\\GateServer.csproj",
+        "packagesPath": "C:\\Users\\59358\\.nuget\\packages\\",
+        "outputPath": "D:\\HSServer\\GateServer\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\59358\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "D:\\HSServer\\Core\\Core.csproj": {
+                "projectPath": "D:\\HSServer\\Core\\Core.csproj"
+              },
+              "D:\\HSServer\\Share\\Share.csproj": {
+                "projectPath": "D:\\HSServer\\Share\\Share.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
           "imports": [
             "net461",
             "net462",
@@ -185,6 +325,12 @@
             "projectReferences": {
               "D:\\HSServer\\Core\\Core.csproj": {
                 "projectPath": "D:\\HSServer\\Core\\Core.csproj"
+              },
+              "D:\\HSServer\\GameServer\\GameServer.csproj": {
+                "projectPath": "D:\\HSServer\\GameServer\\GameServer.csproj"
+              },
+              "D:\\HSServer\\GateServer\\GateServer.csproj": {
+                "projectPath": "D:\\HSServer\\GateServer\\GateServer.csproj"
               },
               "D:\\HSServer\\LoginServer\\LoginServer.csproj": {
                 "projectPath": "D:\\HSServer\\LoginServer\\LoginServer.csproj"

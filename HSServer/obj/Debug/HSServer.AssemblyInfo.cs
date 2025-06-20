@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("HSServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+884119d9b3dcd0797a8848b70687fa9cbfedc842")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d5fe3548e29a88f5f9075f1f5138fc8f10ac7079")]
 [assembly: System.Reflection.AssemblyProductAttribute("HSServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("HSServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

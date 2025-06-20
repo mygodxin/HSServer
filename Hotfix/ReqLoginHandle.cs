@@ -1,7 +1,7 @@
-using System;
 using Core;
 using LoginServer;
 using Share;
+using System;
 
 namespace Hotfix
 {
@@ -18,7 +18,7 @@ namespace Hotfix
                 channel.WriteError("账号不能为空");
                 return;
             }
-            var session = new Session();
+            var session = new session();
             session.Account = account;
             session.LoginTime = DateTime.UtcNow;
             session.Channel = channel;

@@ -1,0 +1,6 @@
+{
+  "ServerID": 3001,
+  "ServerURL": "http://127.0.0.1:3000",
+  "MongoURL": "mongodb://127.0.0.1:27017/?authSource=admin",
+  "MongoName": "HSServer"
+}

@@ -20,10 +20,20 @@ namespace Share
     [MessagePackObject(true)]
     public class ResLogin : Message
     {
-        public bool Success;
-        public string Message;
-        public string GameServerIp;
-        public int GameServerPort;
-        public string SessionToken;
+        public string Token { get; set; }
+        public string GateAddress { get; set; } // "IP:Port"
+    }
+
+    [MessagePackObject(true)]
+    public class GateForward
+    {
+        public int UserId { get; set; }
+        public byte[] GameData { get; set; }
+    }
+
+    [MessagePackObject(true)]
+    public class UserLoginEvent
+    {
+        public int UserId { get; set; }
     }
 }

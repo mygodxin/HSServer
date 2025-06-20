@@ -23,7 +23,7 @@ namespace Core
 
         public virtual void WriteError(string error)
         {
-
+            
         }
     }
 }
