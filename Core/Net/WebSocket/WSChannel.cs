@@ -1,19 +1,17 @@
-using KcpTransport;
 using MessagePack;
-using System;
 using System.Collections.Concurrent;
-using System.Text;
+using System.Collections.Generic;
+using System.Net.WebSockets;
 
-namespace Core.Net.KCP
+namespace Core.Net.WS
 {
-    public class KCPChannel : NetChannel
+    public class WSChannel : NetChannel
     {
-        private KcpConnection _connection;
-        private KcpStream _stream;
+        private WebSocket _connection;
         private ConcurrentQueue<Message> _messages = new ConcurrentQueue<Message>();
         private Action<NetChannel, Message> _onMessage;
 
-        public KCPChannel(KcpConnection connection, Action<NetChannel, Message> onMessage)
+        public WSChannel(WebSocket connection, Action<NetChannel, Message> onMessage)
         {
             _connection = connection;
             _onMessage = onMessage;
@@ -21,7 +19,7 @@ namespace Core.Net.KCP
 
         public override async Task DisconnectAsync()
         {
-            _connection.Disconnect();
+            _connection.CloseAsync(WebSocketCloseStatus.Empty, string.Empty, default);
             await Task.CompletedTask;
         }
 
@@ -32,14 +30,12 @@ namespace Core.Net.KCP
 
         public override async Task StartAsync()
         {
-            _stream = await _connection.OpenOutboundStreamAsync();
             Send();
             Recive();
         }
 
         private async void Send()
         {
-            var stream = _stream;
             try
             {
                 while (!cancel.IsCancellationRequested)
@@ -47,35 +43,34 @@ namespace Core.Net.KCP
                     if (_messages.TryDequeue(out var message))
                     {
                         var msg = MessagePackSerializer.Serialize(message);
-                        await stream.WriteAsync(msg);
+                        await _connection.SendAsync(msg, WebSocketMessageType.Binary, true, cancel.Token);
                     }
                 }
             }
-            catch (KcpDisconnectedException)
+            catch (Exception e)
             {
-                Console.WriteLine($"Disconnected, Id:{_connection.ConnectionId}");
+                Console.WriteLine($"Disconnected, Id:{_connection.State}");
             }
         }
 
         private async void Recive()
         {
-            var stream = _stream;
             try
             {
                 var buffer = new byte[1024];
                 while (!cancel.IsCancellationRequested)
                 {
                     // Wait incoming data
-                    var len = await stream.ReadAsync(buffer, cancel.Token);
+                    var len = await _connection.ReceiveAsync(buffer, cancel.Token);
 
                     var msg = MessagePackSerializer.Deserialize<Message>(buffer);
 
                     _onMessage?.Invoke(this, msg);
                 }
             }
-            catch (KcpDisconnectedException)
+            catch (Exception e)
             {
-                Console.WriteLine($"Disconnected, Id:{_connection.ConnectionId}");
+                Console.WriteLine($"Disconnected, Id:{_connection.State}");
             }
         }
     }

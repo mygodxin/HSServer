@@ -7,3 +7,4 @@
 *.sln.docstates
 #忽略生成目录
 bin/
+obj/
