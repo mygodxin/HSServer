@@ -1,4 +1,5 @@
 using Core;
+using Core.Net.Http;
 using Proto;
 using Proto.Cluster;
 using Proto.Cluster.Identity;
@@ -38,9 +39,14 @@ namespace LoginServer
             system.Root.Send(pid, new ReqLogin { Account = "mdx", Password = "123456", Platform = "Test" });
         }
 
-        private static void InitListener()
+        private static async void InitListener()
         {
+            await HttpServer.Start(20000);
+        }
 
+        public static async void Stop()
+        {
+            await HttpServer.Stop();
         }
     }
 }

@@ -5,7 +5,7 @@ using System;
 
 namespace Hotfix
 {
-    [MessageHandle(typeof(ReqLogin))]
+    [MessageType(typeof(ReqLogin))]
     public class ReqLoginHandle : MessageHandle
     {
         public override void Excute()

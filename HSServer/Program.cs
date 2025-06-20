@@ -21,9 +21,14 @@ namespace HSServer
             var controller = new CodeLoader();
             controller.Init();
 
+            // 登录服务启动
             LoginServer.LoginServer.StartAsync();
 
+            // 网关服务启动
             GateServer.GateServer.StartAsync();
+
+            // 游戏服务启动
+
 
             while (true)
             {

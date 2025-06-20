@@ -1,5 +1,5 @@
-using System;
 using MessagePack;
+using System;
 
 namespace Core
 {
@@ -24,11 +24,11 @@ namespace Core
     /// 消息标签
     /// </summary>
     [AttributeUsage(AttributeTargets.Class)]
-    public class MessageHandleAttribute : Attribute
+    public class MessageTypeAttribute : Attribute
     {
         public Type MessageType;
 
-        public MessageHandleAttribute(Type type)
+        public MessageTypeAttribute(Type type)
         {
             MessageType = type;
         }

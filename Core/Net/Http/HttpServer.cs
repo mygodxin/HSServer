@@ -45,7 +45,8 @@ namespace Core.Net.Http
             }).UseNLog();
 
             app = builder.Build();
-            app.MapFallback(HandleRequest);
+            app.MapGet("/game/{text}", (HttpContext context) => HandleRequest(context));
+            app.MapPost("/game/{text}", (HttpContext context) => HandleRequest(context));
             await app.StartAsync();
             Logger.Info("[HttpServer] start!");
             return;
@@ -57,13 +58,13 @@ namespace Core.Net.Http
             {
                 string ip = context.Connection.RemoteIpAddress.ToString();
                 string url = context.Request.PathBase + context.Request.Path;
-                Logger.Info("收到来自[{}]的HTTP请求. 请求url:[{}]", ip, url);
+                Logger.Info($"收到来自[{ip}]的HTTP请求. 请求url:[{url}]");
                 Dictionary<string, string> paramMap = new Dictionary<string, string>();
 
                 foreach (var keyValuePair in context.Request.Query)
                     paramMap.Add(keyValuePair.Key, keyValuePair.Value[0]);
 
-                context.Response.Headers.Append("content-type", "text/html;charset=utf-8");
+                context.Response.Headers.add("content-type", "text/html;charset=utf-8");
 
                 if (context.Request.Method.Equals("POST"))
                 {
@@ -120,12 +121,20 @@ namespace Core.Net.Http
                     return;
                 }
 
-                await context.Response.WriteAsync(new HttpReturn(HttpStatus.Success, "Http返回了"));
+                var handler = HotfixManager.Instance.GetHttpHandle(cmd);
+                if (handler == null)
+                {
+                    await context.Response.WriteAsync(new HttpReturn(HttpStatus.ParamErr, "commond 不存在:" + cmd));
+                    return;
+                }
+
+                var ret = await Task.Run(() => { return handler.Excute(ip, url, paramMap); });
+                await context.Response.WriteAsync(ret);
             }
             catch (Exception e)
             {
-                Logger.Error("执行http异常. {} {}", e.Message, e.StackTrace);
-                await context.Response.WriteAsync(e.Message);
+                Logger.Error($"执行http异常. {e.Message} {e.StackTrace}");
+                //await context.Response.WriteAsync(e.Message);
             }
         }
 
