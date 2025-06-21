@@ -45,14 +45,14 @@ namespace Core.Net.Http
             }).UseNLog();
 
             app = builder.Build();
-            app.MapGet("/game/{text}", (HttpContext context) => HandleRequest(context));
-            app.MapPost("/game/{text}", (HttpContext context) => HandleRequest(context));
+            app.MapGet("/game/{text}", HandleRequest);
+            app.MapPost("/game/{text}", HandleRequest);
             await app.StartAsync();
             Logger.Info("[HttpServer] start!");
             return;
         }
 
-        private static async void HandleRequest(HttpContext context)
+        private static async Task HandleRequest(HttpContext context)
         {
             try
             {
@@ -64,7 +64,7 @@ namespace Core.Net.Http
                 foreach (var keyValuePair in context.Request.Query)
                     paramMap.Add(keyValuePair.Key, keyValuePair.Value[0]);
 
-                context.Response.Headers.add("content-type", "text/html;charset=utf-8");
+                context.Response.Headers.Append("content-type", "text/html;charset=utf-8");
 
                 if (context.Request.Method.Equals("POST"))
                 {
@@ -128,7 +128,7 @@ namespace Core.Net.Http
                     return;
                 }
 
-                var ret = await Task.Run(() => { return handler.Excute(ip, url, paramMap); });
+                var ret = await handler.Excute(ip, url, paramMap);
                 await context.Response.WriteAsync(ret);
             }
             catch (Exception e)

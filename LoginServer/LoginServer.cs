@@ -44,7 +44,7 @@ namespace LoginServer
             await HttpServer.Start(20000);
         }
 
-        public static async void Stop()
+        public static async Task StopAsync()
         {
             await HttpServer.Stop();
         }

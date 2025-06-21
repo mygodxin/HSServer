@@ -39,6 +39,7 @@ namespace HSServer
                 }
                 else if (input == "exit")
                 {
+                    LoginServer.LoginServer.StopAsync();
                     Environment.Exit(0);
                 }
             }
