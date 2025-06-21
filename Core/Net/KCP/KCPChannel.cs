@@ -1,7 +1,9 @@
 using KcpTransport;
 using MessagePack;
+using Proto.Remote;
 using System;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Text;
 
 namespace Core.Net.KCP
@@ -10,13 +12,12 @@ namespace Core.Net.KCP
     {
         private KcpConnection _connection;
         private KcpStream _stream;
-        private ConcurrentQueue<Message> _messages = new ConcurrentQueue<Message>();
-        private Action<NetChannel, Message> _onMessage;
+        private ConcurrentQueue<byte[]> _messages = new ConcurrentQueue<byte[]>();
+        private byte[] _buffer = new byte[4096];
 
-        public KCPChannel(KcpConnection connection, Action<NetChannel, Message> onMessage)
+        public KCPChannel(KcpConnection connection)
         {
             _connection = connection;
-            _onMessage = onMessage;
         }
 
         public override async Task DisconnectAsync()
@@ -27,28 +28,18 @@ namespace Core.Net.KCP
 
         public override void Write(Message message)
         {
-            _messages.Append(message);
+            _messages.Append(MessageHandle.Write(message));
         }
 
         public override async Task StartAsync()
         {
             _stream = await _connection.OpenOutboundStreamAsync();
-            Send();
-            Recive();
-        }
-
-        private async void Send()
-        {
-            var stream = _stream;
             try
             {
                 while (!cancel.IsCancellationRequested)
                 {
-                    if (_messages.TryDequeue(out var message))
-                    {
-                        var msg = MessagePackSerializer.Serialize(message);
-                        await stream.WriteAsync(msg);
-                    }
+                    await Send();
+                    await Recive();
                 }
             }
             catch (KcpDisconnectedException)
@@ -57,25 +48,21 @@ namespace Core.Net.KCP
             }
         }
 
-        private async void Recive()
+        private async Task Send()
         {
-            var stream = _stream;
-            try
+            if (_messages.TryDequeue(out var message))
             {
-                var buffer = new byte[1024];
-                while (!cancel.IsCancellationRequested)
-                {
-                    // Wait incoming data
-                    var len = await stream.ReadAsync(buffer, cancel.Token);
-
-                    var msg = MessagePackSerializer.Deserialize<Message>(buffer);
-
-                    _onMessage?.Invoke(this, msg);
-                }
+                var msg = MessagePackSerializer.Serialize(message);
+                await _stream.WriteAsync(msg);
             }
-            catch (KcpDisconnectedException)
+        }
+
+        private async Task Recive()
+        {
+            var result = await _stream.ReadAsync(_buffer, cancel.Token);
+            if (result != null)
             {
-                Console.WriteLine($"Disconnected, Id:{_connection.ConnectionId}");
+                MessageHandle.Read(_buffer, this);
             }
         }
     }

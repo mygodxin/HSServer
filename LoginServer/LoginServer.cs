@@ -1,9 +1,7 @@
 using Core;
 using Core.Net.Http;
 using Proto;
-using Proto.Cluster;
-using Proto.Cluster.Identity;
-using Proto.Cluster.Partition;
+
 using Proto.Remote;
 using Proto.Remote.GrpcNet;
 using Share;
@@ -15,6 +13,8 @@ namespace LoginServer
     /// </summary>
     public class LoginServer
     {
+        private static HttpServer _http;
+
         public static async void StartAsync()
         {
             InitActorSystem();
@@ -41,12 +41,13 @@ namespace LoginServer
 
         private static async void InitListener()
         {
-            await HttpServer.Start(20000);
+            _http = new HttpServer();
+            await _http.Start(20000);
         }
 
         public static async Task StopAsync()
         {
-            await HttpServer.Stop();
+            await _http.Stop();
         }
     }
 }

@@ -4,10 +4,11 @@ using System.Reflection;
 
 namespace Core
 {
-    public class HotfixManager : Singleton<HotfixManager>
+    public class HandleManager : Singleton<HandleManager>
     {
         private Dictionary<int, Type> _msgHandles = new Dictionary<int, Type>();
         private Dictionary<string, Type> _httpHandles = new Dictionary<string, Type>();
+        public Dictionary<Type, int> Messages;
 
         public MessageHandle GetMessageHandle(int msgID)
         {
@@ -30,15 +31,14 @@ namespace Core
         {
             var attribute = (MessageTypeAttribute)type.GetCustomAttribute(typeof(MessageTypeAttribute), true);
             if (attribute == null) return false;
-            var msgIdField = attribute.MessageType.GetField("GID", BindingFlags.Static | BindingFlags.Public);
-            if (msgIdField == null) return false;
-            int msgId = (int)msgIdField.GetValue(null);
-
-            if (!_msgHandles.ContainsKey(msgId))
-                _msgHandles.Add(msgId, type);
+            var msgType = attribute.MessageType;
+            var id = Messages[msgType];
+            Logger.Warn($"[add] {id}");
+            if (!_msgHandles.ContainsKey(id))
+                _msgHandles.Add(id, type);
             else
             {
-                Logger.Error($"add olready has msg:{msgId}");
+                Logger.Error($"add olready has msg:{msgType.Name}");
             }
             return true;
         }

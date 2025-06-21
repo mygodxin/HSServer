@@ -1,20 +1,23 @@
 using MessagePack;
+using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.WebSockets;
+using System.Runtime.InteropServices;
+using System.Threading.Channels;
 
 namespace Core.Net.WS
 {
     public class WSChannel : NetChannel
     {
         private WebSocket _connection;
-        private ConcurrentQueue<Message> _messages = new ConcurrentQueue<Message>();
-        private Action<NetChannel, Message> _onMessage;
+        private ConcurrentQueue<byte[]> _messages = new ConcurrentQueue<byte[]>();
+        private byte[] _buffer = new byte[4096];
 
-        public WSChannel(WebSocket connection, Action<NetChannel, Message> onMessage)
+        public WSChannel(WebSocket connection)
         {
             _connection = connection;
-            _onMessage = onMessage;
         }
 
         public override async Task DisconnectAsync()
@@ -25,52 +28,40 @@ namespace Core.Net.WS
 
         public override void Write(Message message)
         {
-            _messages.Append(message);
+            _messages.Append(MessageHandle.Write(message));
         }
 
         public override async Task StartAsync()
         {
-            Send();
-            Recive();
-        }
-
-        private async void Send()
-        {
             try
             {
+                var buffer = new byte[4096];
                 while (!cancel.IsCancellationRequested)
                 {
-                    if (_messages.TryDequeue(out var message))
-                    {
-                        var msg = MessagePackSerializer.Serialize(message);
-                        await _connection.SendAsync(msg, WebSocketMessageType.Binary, true, cancel.Token);
-                    }
+                    Send();
+                    Recive();
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Disconnected, Id:{_connection.State}");
+                Logger.Error(e.Message);
+            }
+        }
+
+        private async void Send()
+        {
+            if (_messages.TryDequeue(out var message))
+            {
+                await _connection.SendAsync(message, WebSocketMessageType.Binary, true, cancel.Token);
             }
         }
 
         private async void Recive()
         {
-            try
+            var result = await _connection.ReceiveAsync(_buffer, cancel.Token);
+            if (result != null)
             {
-                var buffer = new byte[1024];
-                while (!cancel.IsCancellationRequested)
-                {
-                    // Wait incoming data
-                    var len = await _connection.ReceiveAsync(buffer, cancel.Token);
-
-                    var msg = MessagePackSerializer.Deserialize<Message>(buffer);
-
-                    _onMessage?.Invoke(this, msg);
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Disconnected, Id:{_connection.State}");
+                MessageHandle.Read(_buffer, this);
             }
         }
     }

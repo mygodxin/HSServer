@@ -80,7 +80,7 @@
 //            private Task? _task;
 //            private Timer? _receiveTimeoutTimer;
 
-//            public void Start(Props props, PID self, ActorSystem system)
+//            public void StartAsync(Props props, PID self, ActorSystem system)
 //            {
 //                var actor = props.Producer();
 //                _task = Task.Run(async () =>
@@ -284,7 +284,7 @@
 //        {
 //            var pid = new PID($"actor-{Guid.NewGuid()}");
 //            var process = new ActorProcess();
-//            process.Start(props, pid, this);
+//            process.StartAsync(props, pid, this);
 //            _processes.TryAdd(pid, process);
 //            return pid;
 //        }

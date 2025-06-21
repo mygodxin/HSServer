@@ -4,8 +4,9 @@
 using Core;
 using LoginServer;
 using Luban;
+using MessagePack;
 using Share;
-using System.Net;
+using System.Net.WebSockets;
 
 namespace HSServer
 {
@@ -29,7 +30,7 @@ namespace HSServer
 
             // 游戏服务启动
 
-
+            TestWS();
             while (true)
             {
                 var input = Console.ReadLine();
@@ -42,6 +43,40 @@ namespace HSServer
                     LoginServer.LoginServer.StopAsync();
                     Environment.Exit(0);
                 }
+            }
+        }
+        private static CancellationTokenSource _cancel;
+        private static async void TestWS()
+        {
+            _cancel = new CancellationTokenSource();
+            var client = new ClientWebSocket();
+            Console.WriteLine($"[Client] 开始连接");
+            await client.ConnectAsync(new Uri("ws://localhost:3000/ws"), _cancel.Token);
+            Console.WriteLine($"[Client] 连接成功");
+            var data = new byte[4096];
+            while (true)
+            {
+                var str = Console.ReadLine();
+                if (str != null && str != "")
+                {
+                    Console.WriteLine($"[Client]{str}");
+                    var login = new ReqLogin();
+                    login.Account = str;
+                    login.Password = "123456";
+                    login.Platform = "taptap";
+
+                    await client.SendAsync(MessageHandle.Write(login), WebSocketMessageType.Binary, true, _cancel.Token);
+                }
+                if (client.State == WebSocketState.Open)
+                {
+                    var result = await client.ReceiveAsync(data, _cancel.Token);
+                    if (result != null)
+                    {
+                        var msg = MessagePackSerializer.Deserialize<Message>(data);
+                        Console.WriteLine(msg);
+                    }
+                }
+
             }
         }
     }

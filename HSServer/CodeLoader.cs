@@ -1,4 +1,5 @@
 using Core;
+using Share;
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -26,9 +27,11 @@ namespace HSServer
     {
         private readonly string[] Assemblys = ["Hotfix"];
         private Dictionary<string, AssemblyLoadContext> _assemblyLoadContexts;
+        private List<Assembly> _assemblys;
 
         public void Init()
         {
+            _assemblys = new List<Assembly>();
             _assemblyLoadContexts = new Dictionary<string, AssemblyLoadContext>();
             Reload();
         }
@@ -46,15 +49,25 @@ namespace HSServer
 
         public void Reload()
         {
+            _assemblys.Clear();
             IHotfixRun hotfixRun = null;
             for (int i = 0; i < Assemblys.Length; i++)
             {
                 var assemblyName = Assemblys[i];
                 var assembly = LoadHotUpdate(assemblyName);
+                _assemblys.Add(assembly);
+            }
+            GC.Collect();
+
+            HandleManager.Instance.Messages = MessageMap.Messages;
+
+            for (int i = 0; i < _assemblys.Count; i++)
+            {
+                var assembly = _assemblys[i];
                 var types = assembly.GetTypes();
                 foreach (var type in types)
                 {
-                    if (!HotfixManager.Instance.AddMessageHandle(type) && !HotfixManager.Instance.AddHttpHandle(type))
+                    if (!HandleManager.Instance.AddMessageHandle(type) && !HandleManager.Instance.AddHttpHandle(type))
                     {
                         var hotfixStart = type.GetInterface(typeof(IHotfixRun).FullName);
                         if (hotfixStart != null)
@@ -65,8 +78,6 @@ namespace HSServer
                     }
                 }
             }
-            GC.Collect();
-
             // 运行热更代码
             if (hotfixRun != null)
                 hotfixRun.Run();

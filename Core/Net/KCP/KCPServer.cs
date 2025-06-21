@@ -36,7 +36,7 @@ namespace Core.Net.KCP
                     var result = await _transport.AcceptConnectionAsync(_cts.Token);
                     if (result.ConnectionId == 0) continue; // 无效连接
 
-                    var conn = new KCPChannel(result, OnMessage);
+                    var conn = new KCPChannel(result);
                     await conn.StartAsync();
                     await conn.DisconnectAsync();
                 }
@@ -49,14 +49,6 @@ namespace Core.Net.KCP
                     Console.WriteLine($"Receive error: {ex}");
                 }
             }
-        }
-
-        public void OnMessage(NetChannel channel, Message message)
-        {
-            var handle = HotfixManager.Instance.GetMessageHandle(message.ID);
-            handle.Channel = channel;
-            handle.Message = message;
-            handle.Excute();
         }
 
         public void Dispose()

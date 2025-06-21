@@ -4,25 +4,25 @@ using NLog.Web;
 
 namespace Core.Net.WS
 {
-    public class WSServer : NetChannel
+    public class WSServer
     {
-        WebApplication app { get; set; }
+        WebApplication _ws { get; set; }
 
-        public Task Start(string url)
+        public async Task StartAsync(string url)
         {
             var builder = WebApplication.CreateBuilder();
 
             builder.WebHost.UseUrls(url).UseNLog();
-            app = builder.Build();
+            _ws = builder.Build();
 
-            app.UseWebSockets();
+            _ws.UseWebSockets();
 
-            app.Map("/ws", async context =>
+            _ws.Map("/ws", async context =>
             {
                 if (context.WebSockets.IsWebSocketRequest)
                 {
                     var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                    var conn = new WSChannel(webSocket, OnMessage);
+                    var conn = new WSChannel(webSocket);
                     await conn.StartAsync();
                     await conn.DisconnectAsync();
                 }
@@ -32,30 +32,20 @@ namespace Core.Net.WS
                 }
             });
             Logger.Info("[WSServer] started");
-            return app.StartAsync();
-        }
-
-        public void OnMessage(NetChannel channel, Message message)
-        {
-            var handle = HotfixManager.Instance.GetMessageHandle(message.ID);
-            handle.Channel = channel;
-            handle.Message = message;
-            handle.Excute();
+            await _ws.StartAsync();
         }
 
         /// <summary>
         /// 停止
         /// </summary>
-        public Task Stop()
+        public async Task StopAsync()
         {
-            if (app != null)
+            if (_ws != null)
             {
                 Logger.Info("[WSServer] stop");
-                var task = app.StopAsync();
-                app = null;
-                return task;
+                await _ws.StopAsync();
+                _ws = null;
             }
-            return Task.CompletedTask;
         }
     }
 }

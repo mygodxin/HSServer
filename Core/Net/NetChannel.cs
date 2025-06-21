@@ -6,7 +6,7 @@ namespace Core
     public class NetChannel
     {
         public string RemoteAddress { get; set; }
-        protected CancellationTokenSource cancel;
+        protected CancellationTokenSource cancel = new CancellationTokenSource();
 
         public virtual Task StartAsync()
         {
@@ -23,7 +23,7 @@ namespace Core
 
         public virtual void WriteError(string error)
         {
-            
+
         }
     }
 }

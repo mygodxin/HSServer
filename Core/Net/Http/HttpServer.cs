@@ -17,12 +17,12 @@ namespace Core.Net.Http
 {
     public class HttpServer
     {
-        static WebApplication app { get; set; }
+        private WebApplication _http { get; set; }
         /// <summary>
         /// 启动
         /// </summary>
         /// <param name="port"></param>
-        public static async Task Start(int port, bool isDebug = true)
+        public async Task Start(int port, bool isDebug = true)
         {
             var builder = WebApplication.CreateBuilder();
             builder.WebHost.UseKestrel(options =>
@@ -44,15 +44,15 @@ namespace Core.Net.Http
                 logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Error);
             }).UseNLog();
 
-            app = builder.Build();
-            app.MapGet("/game/{text}", HandleRequest);
-            app.MapPost("/game/{text}", HandleRequest);
-            await app.StartAsync();
+            _http = builder.Build();
+            _http.MapGet("/game/{text}", HandleRequest);
+            _http.MapPost("/game/{text}", HandleRequest);
+            await _http.StartAsync();
             Logger.Info("[HttpServer] start!");
             return;
         }
 
-        private static async Task HandleRequest(HttpContext context)
+        private async Task HandleRequest(HttpContext context)
         {
             try
             {
@@ -121,7 +121,7 @@ namespace Core.Net.Http
                     return;
                 }
 
-                var handler = HotfixManager.Instance.GetHttpHandle(cmd);
+                var handler = HandleManager.Instance.GetHttpHandle(cmd);
                 if (handler == null)
                 {
                     await context.Response.WriteAsync(new HttpReturn(HttpStatus.ParamErr, "commond 不存在:" + cmd));
@@ -134,20 +134,20 @@ namespace Core.Net.Http
             catch (Exception e)
             {
                 Logger.Error($"执行http异常. {e.Message} {e.StackTrace}");
-                //await context.Response.WriteAsync(e.Message);
+                await context.Response.WriteAsync(e.Message);
             }
         }
 
         /// <summary>
         /// 停止
         /// </summary>
-        public static Task Stop()
+        public Task Stop()
         {
-            if (app != null)
+            if (_http != null)
             {
                 Logger.Info("[HttpServer] stop!");
-                var task = app.StopAsync();
-                app = null;
+                var task = _http.StopAsync();
+                _http = null;
                 return task;
             }
             return Task.CompletedTask;

@@ -18,6 +18,7 @@ namespace Share
     /// 请求登陆回复
     /// </summary>
     [MessagePackObject(true)]
+    [Union(0, typeof(ResLogin))]
     public class ResLogin : Message
     {
         public string Token { get; set; }
