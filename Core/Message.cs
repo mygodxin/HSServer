@@ -9,9 +9,9 @@ namespace Core
     [MessagePackObject(true)]
     public class Message
     {
-        ///// <summary>
-        ///// 全局唯一ID
-        ///// </summary>
+        /// <summary>
+        /// 全局唯一ID
+        /// </summary>
         //public int ID => GetType().FullName.GetHashCode();
     }
 

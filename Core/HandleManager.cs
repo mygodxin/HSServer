@@ -8,7 +8,16 @@ namespace Core
     {
         private Dictionary<int, Type> _msgHandles = new Dictionary<int, Type>();
         private Dictionary<string, Type> _httpHandles = new Dictionary<string, Type>();
-        public Dictionary<Type, int> Messages;
+
+        /// <summary>
+        /// 获取message唯一ID
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public int GetID(Type type)
+        {
+            return (int)MurmurHash3.Hash(type.FullName);
+        }
 
         public MessageHandle GetMessageHandle(int msgID)
         {
@@ -32,7 +41,7 @@ namespace Core
             var attribute = (MessageTypeAttribute)type.GetCustomAttribute(typeof(MessageTypeAttribute), true);
             if (attribute == null) return false;
             var msgType = attribute.MessageType;
-            var id = Messages[msgType];
+            var id = GetID(msgType);
             Logger.Warn($"[add] {id}");
             if (!_msgHandles.ContainsKey(id))
                 _msgHandles.Add(id, type);

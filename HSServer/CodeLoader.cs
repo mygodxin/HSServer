@@ -1,4 +1,5 @@
 using Core;
+using Core.MessageExtension.PolymorphicMessagePack;
 using Share;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -59,7 +60,7 @@ namespace HSServer
             }
             GC.Collect();
 
-            HandleManager.Instance.Messages = MessageMap.Messages;
+            MessageManager.Register();
 
             for (int i = 0; i < _assemblys.Count; i++)
             {

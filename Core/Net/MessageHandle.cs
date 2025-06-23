@@ -23,7 +23,7 @@ namespace Core
         {
             var bytes = HSerializer.Serialize(message);
             int len = 8 + bytes.Length;
-            var msgID = HandleManager.Instance.Messages[message.GetType()];
+            var msgID = HandleManager.Instance.GetID(message.GetType());
             Span<byte> span = stackalloc byte[len];
             int offset = 0;
             span.WriteInt32(len, ref offset);
@@ -39,12 +39,12 @@ namespace Core
             int msgLen = buffer.ReadInt32(ref offset);
             int msgID = buffer.ReadInt32(ref offset);
             ReadOnlySpan<byte> bytes = buffer.ReadBytes(msgLen - 8, ref offset);
+            var message = MessagePackSerializer.Deserialize<Message>(bytes.ToArray());
             Logger.Warn($"[read] {msgID}");
             var handle = HandleManager.Instance.GetMessageHandle(msgID);
             if (handle != null)
             {
-                var message = MessagePackSerializer.Deserialize<Message>(bytes.ToArray());
-                Logger.Info($"{message as Reqlogin}");
+                //Logger.Info($"{message as Reqlogin}");
                 handle.Channel = channel;
                 handle.Message = message;
                 handle.Excute();

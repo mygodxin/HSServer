@@ -65,17 +65,21 @@ namespace HSServer
                     login.Password = "123456";
                     login.Platform = "taptap";
 
+                    var d = MessagePackSerializer.Serialize<ReqLogin>(login);
+                    var c = MessagePackSerializer.Deserialize<Message>(d);
+                    var p = c as ReqLogin;
+                    Logger.Info(p.ToString());
                     await client.SendAsync(MessageHandle.Write(login), WebSocketMessageType.Binary, true, _cancel.Token);
                 }
-                if (client.State == WebSocketState.Open)
-                {
-                    var result = await client.ReceiveAsync(data, _cancel.Token);
-                    if (result != null)
-                    {
-                        var msg = MessagePackSerializer.Deserialize<Message>(data);
-                        Console.WriteLine(msg);
-                    }
-                }
+                //if (client.State == WebSocketState.Open)
+                //{
+                //    var result = await client.ReceiveAsync(data, _cancel.Token);
+                //    if (result != null)
+                //    {
+                //        var msg = MessagePackSerializer.Deserialize<Message>(data);
+                //        Console.WriteLine(msg);
+                //    }
+                //}
 
             }
         }
