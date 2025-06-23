@@ -1,3 +1,4 @@
+using Core.Util;
 using KcpTransport;
 using MessagePack;
 using Proto.Remote;
@@ -52,7 +53,7 @@ namespace Core.Net.KCP
         {
             if (_messages.TryDequeue(out var message))
             {
-                var msg = MessagePackSerializer.Serialize(message);
+                var msg = HSerializer.Serialize(message);
                 await _stream.WriteAsync(msg);
             }
         }

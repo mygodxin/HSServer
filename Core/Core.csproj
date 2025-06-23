@@ -19,6 +19,10 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <OutputPath>..\Bin\Release</OutputPath>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Util\SpanExtension.cs" />
+  </ItemGroup>
   
   <ItemGroup>
     <PackageReference Include="KcpTransport" Version="0.0.2" />

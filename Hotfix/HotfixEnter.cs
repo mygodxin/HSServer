@@ -10,7 +10,7 @@ namespace Hotfix
     {
         public Task Run(params string[] args)
         {
-            Console.WriteLine("你好啊2222");
+            Console.WriteLine("[HotfixEnter] Run");
             return Task.CompletedTask;
         }
     }

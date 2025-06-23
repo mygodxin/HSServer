@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Core
+namespace Core.Util
 {
     /// <summary>
     /// 序列化实现
@@ -22,7 +22,7 @@ namespace Core
         /// <returns></returns>
         public static byte[] Serialize<T>(T value, MessagePackSerializerOptions? options = null, CancellationToken cancellationToken = default)
         {
-            return MessagePackSerializer.Serialize<T>(value, options, cancellationToken);
+            return MessagePackSerializer.Serialize(value, options, cancellationToken);
         }
 
         /// <summary>

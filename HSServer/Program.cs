@@ -2,6 +2,7 @@
 
 
 using Core;
+using Core.Util;
 using LoginServer;
 using Luban;
 using MessagePack;
@@ -65,8 +66,8 @@ namespace HSServer
                     login.Password = "123456";
                     login.Platform = "taptap";
 
-                    var d = MessagePackSerializer.Serialize<ReqLogin>(login);
-                    var c = MessagePackSerializer.Deserialize<Message>(d);
+                    var d = HSerializer.Serialize<ReqLogin>(login);
+                    var c = HSerializer.Deserialize<Message>(d);
                     var p = c as ReqLogin;
                     Logger.Info(p.ToString());
                     await client.SendAsync(MessageHandle.Write(login), WebSocketMessageType.Binary, true, _cancel.Token);

@@ -3,7 +3,7 @@ using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Core;
+namespace Core.Util;
 
 public static class SpanExtension
 {
@@ -104,7 +104,7 @@ public static class SpanExtension
         CheckSpace(span, ref offset, sizeof(ushort) + byteCount);
 
         // 先写入长度(ushort)
-        WriteUInt16(span, (ushort)byteCount, ref offset);
+        span.WriteUInt16((ushort)byteCount, ref offset);
 
         // 再写入字符串内容
         Encoding.UTF8.GetBytes(value, span.Slice(offset));
@@ -214,10 +214,10 @@ public static class SpanExtension
     public static string ReadStringWithLength(this ReadOnlySpan<byte> span, ref int offset)
     {
         // 先读取长度(ushort)
-        ushort length = ReadUInt16(span, ref offset);
+        ushort length = span.ReadUInt16(ref offset);
 
         // 再读取字符串内容
-        return ReadString(span, length, ref offset);
+        return span.ReadString(length, ref offset);
     }
 
     // ========== 辅助方法 ==========
