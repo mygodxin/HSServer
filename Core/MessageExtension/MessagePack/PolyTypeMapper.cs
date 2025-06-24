@@ -1,5 +1,7 @@
-using NLog;
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 namespace Core.MessageExtension.PolymorphicMessagePack
@@ -60,7 +62,7 @@ namespace Core.MessageExtension.PolymorphicMessagePack
             {
                 if (t.FullName != type.FullName)
                 {
-                    Logger.Error($"typemapper注册错误,不同类型,id相同{t.FullName}  {type.FullName}");
+                    //($"typemapper注册错误,不同类型,id相同{t.FullName}  {type.FullName}");
                 }
             }
 
@@ -86,9 +88,8 @@ namespace Core.MessageExtension.PolymorphicMessagePack
 
         public static void Register(Assembly assembly)
         {
-            var types = from h in assembly.GetTypes()
-                        where h.IsClass && !h.ContainsGenericParameters && !h.FullName.Contains("<") && !h.FullName.EndsWith("Handler") && !h.IsSubclassOf(typeof(Attribute)) && h.GetCustomAttribute<PolyIgnore>() == null
-                        select h;
+            var types = assembly.GetTypes().Where(h =>
+            h.IsClass && !h.ContainsGenericParameters && !h.FullName.Contains("<") && !h.FullName.EndsWith("Handler") && !h.IsSubclassOf(typeof(Attribute)) && h.GetCustomAttribute<PolyIgnore>() == null);
             foreach (var t in types)
             {
                 Register(t);

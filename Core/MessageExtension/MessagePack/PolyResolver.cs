@@ -4,6 +4,7 @@ using MessagePack.Formatters;
 using MessagePack.Resolvers;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace Core.MessageExtension.PolymorphicMessagePack
 {

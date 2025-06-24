@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Identity.Data;
 using Proto;
-using Proto.Cluster;
-using Proto.Cluster.Seed;
 using Proto.Remote;
 using Share;
 using System;

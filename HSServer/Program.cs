@@ -2,12 +2,17 @@
 
 
 using Core;
+using Core.Net.KCP;
 using Core.Util;
+using KcpTransport;
 using LoginServer;
 using Luban;
 using MessagePack;
+using Microsoft.Extensions.Hosting;
 using Share;
+using System.Net;
 using System.Net.WebSockets;
+using System.Text;
 
 namespace HSServer
 {
@@ -27,11 +32,11 @@ namespace HSServer
             LoginServer.LoginServer.StartAsync();
 
             // 网关服务启动
-            GateServer.GateServer.StartAsync();
+            //GateServer.GateServer.StartAsync();
 
             // 游戏服务启动
-
-            TestWS();
+            TestKCP();
+            //TestWS();
             while (true)
             {
                 var input = Console.ReadLine();
@@ -82,6 +87,29 @@ namespace HSServer
                 //    }
                 //}
 
+            }
+        }
+
+        private static async void TestKCP()
+        {
+            var server = new KcpServer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 5000));
+            await server.StartAsync();
+            Logger.Info("服务器启动成功");
+            var client = await KcpConnection.ConnectAsync("127.0.0.1", 5000);
+            client.OnRecive = (byte[] bytes) =>
+            {
+                var msg = MessagePackSerializer.Deserialize<Message>(bytes);
+                Console.WriteLine(msg);
+                Logger.Info($"[Client Recive] ");
+            };
+            while (true)
+            {
+                var str = Console.ReadLine();
+                if (str != null && str != "")
+                {
+                    Console.WriteLine($"[Client]{str}");
+                    client.SendReliableBuffer(Encoding.UTF8.GetBytes(str));
+                }
             }
         }
     }

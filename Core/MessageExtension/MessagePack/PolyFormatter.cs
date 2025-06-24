@@ -13,7 +13,6 @@ namespace Core.MessageExtension.PolymorphicMessagePack
 {
     public class PolyFormatter<T> : IMessagePackFormatter<T>
     {
-        static readonly NLog.Logger LOGGER = NLog.LogManager.GetCurrentClassLogger();
         private object lockObj = new object();
 
         public PolyFormatter()

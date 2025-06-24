@@ -25,13 +25,11 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="KcpTransport" Version="0.0.2" />
     <PackageReference Include="MessagePack" Version="3.1.4" />
     <PackageReference Include="MongoDB.Driver" Version="3.4.0" />
     <PackageReference Include="NLog" Version="5.5.0" />
     <PackageReference Include="NLog.Web.AspNetCore" Version="5.5.0" />
     <PackageReference Include="Proto.Actor" Version="1.7.0" />
-    <PackageReference Include="Proto.Cluster" Version="1.7.0" />
     <PackageReference Include="Proto.Remote" Version="1.7.0" />
   </ItemGroup>
 

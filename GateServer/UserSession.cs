@@ -1,5 +1,4 @@
 using Proto;
-using Proto.Cluster;
 using Share;
 using System.Collections.Generic;
 using System.Diagnostics.Metrics;

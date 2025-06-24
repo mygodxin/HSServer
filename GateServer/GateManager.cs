@@ -1,6 +1,5 @@
 using Core;
 using Proto;
-using Proto.Cluster;
 using Share;
 using System;
 using System.Collections.Generic;

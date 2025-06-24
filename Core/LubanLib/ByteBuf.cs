@@ -117,7 +117,7 @@ namespace Luban
         }
 
 #pragma warning disable CA1819 // 属性不应返回数组
-        public byte[] Bytes { get; private set; }
+        public byte[] Bytes { get; set; }
 #pragma warning restore CA1819 // 属性不应返回数组
 
         public byte[] CopyData()

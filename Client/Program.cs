@@ -1,3 +1,4 @@
+using Core;
 using Core.Util;
 using KcpTransport;
 using MessagePack;
@@ -32,7 +33,7 @@ public class Program
         //client.Close();
 
         //TestKCP();
-        TestWS();
+        //TestWS();
         while (true)
         {
 
@@ -42,14 +43,19 @@ public class Program
     private static async void TestKCP()
     {
         var client = await KcpConnection.ConnectAsync("127.0.0.1", 3000);
-        var stream = await client.OpenOutboundStreamAsync();
+        client.OnRecive = (byte[] bytes) =>
+        {
+            var msg = MessagePackSerializer.Deserialize<Message>(bytes);
+            Console.WriteLine(msg);
+            Logger.Info($"[Client Recive] ");
+        };
         while (true)
         {
             var str = Console.ReadLine();
             if (str != null && str != "")
             {
                 Console.WriteLine($"[Client]{str}");
-                stream.WriteAsync(Encoding.UTF8.GetBytes(str));
+                client.SendReliableBuffer(Encoding.UTF8.GetBytes(str));
             }
         }
     }
