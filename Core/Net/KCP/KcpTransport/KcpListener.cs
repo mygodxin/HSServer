@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace KcpTransport
 {
@@ -53,14 +54,12 @@ namespace KcpTransport
     {
         Socket socket;
         ConcurrentQueue<KcpConnection> acceptQueue;
-        private readonly SemaphoreSlim acceptQueueSemaphore = new SemaphoreSlim(0);
         bool isDisposed;
         ConcurrentDictionary<uint, KcpConnection> connections = new();
 
         Task[] socketEventLoopTasks;
         Thread updateConnectionsWorkerThread;
         CancellationTokenSource listenerCancellationTokenSource = new();
-        ByteBuf buffer;
 
         public static ValueTask<KcpListener> ListenAsync(string host, int port, CancellationToken cancellationToken = default)
         {
@@ -129,7 +128,7 @@ namespace KcpTransport
             updateConnectionsWorkerThread.Start(options);
         }
 
-        public async ValueTask<KcpConnection> AcceptConnectionAsync(CancellationToken cancellationToken = default)
+        public KcpConnection AcceptConnection()
         {
             if (isDisposed)
                 throw new System.ObjectDisposedException(nameof(KcpConnection));
@@ -139,41 +138,27 @@ namespace KcpTransport
             {
                 return connection;
             }
-
-            // 等待新连接到达
-            await acceptQueueSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-            // 再次尝试获取连接
-            if (acceptQueue.TryDequeue(out connection))
-            {
-                return connection;
-            }
-
-            // 如果还是获取不到，可能是被其他线程取走了
-            throw new System.InvalidOperationException("Connection was dequeued by another thread");
+            return null;
         }
 
         async Task StartSocketEventLoopAsync(KcpListenerOptions options, int id)
         {
             // await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
 
-            var receivedAddress = new SocketAddress(options.ListenEndPoint.AddressFamily);
+            var receivedAddress = new IPEndPoint(IPAddress.Any, 0).ToSocketAddress();
             var random = new Random();
             var cancellationToken = this.listenerCancellationTokenSource.Token;
 
-            if (buffer == null)
-                buffer = new ByteBuf(options.MaximumTransmissionUnit);
-            var socketBuffer = buffer;
+            var socketBuffer = ArrayPool<byte>.Shared.Rent(options.MaximumTransmissionUnit);
 
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
                     // Socket is datagram so received data contains full block
-                    var received = await socket.ReceiveFromAsync(socketBuffer.Bytes, SocketFlags.None, options.ListenEndPoint);
-
+                    var received = await socket.ReceiveFromAsync(socketBuffer, SocketFlags.None, receivedAddress);
                     // first 4 byte is conversationId or extra packet type
-                    var conversationId = socketBuffer.ReadUint();
+                    var conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(0, received));
                     var packetType = (PacketType)conversationId;
                     switch (packetType)
                     {
@@ -194,10 +179,10 @@ namespace KcpTransport
                             break;
                         case PacketType.HandshakeOkRequest:
                             {
-                                conversationId = socketBuffer.ReadUint();
-                                var cookie = socketBuffer.ReadUint();
-                                var timestamp = socketBuffer.ReadLong();
-
+                                conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
+                                var cookie = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(8, received - 8));
+                                var timestamp = MemoryMarshal.Read<long>(socketBuffer.AsSpan(12, received - 12));
+                                Logger.Warn($"[HandshakeOkRequest-recive] conversationId={conversationId}, cookie = {cookie} , timestamp={timestamp} ");
                                 if (!SynCookie.Validate(options.Handshake32bitHashKeyGenerator(), options.HandshakeTimeout, cookie, receivedAddress, timestamp))
                                 {
                                     SendHandshakeNgResponse(socket, receivedAddress);
@@ -216,11 +201,12 @@ namespace KcpTransport
                                 connections[conversationId] = kcpConnection;
                                 acceptQueue.Enqueue(kcpConnection);
                                 SendHandshakeOkResponse(socket, receivedAddress);
+                                Logger.Warn($"[Connection] {conversationId}");
                             }
                             break;
                         case PacketType.Ping:
                             {
-                                conversationId = socketBuffer.ReadUint();
+                                conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
                                 if (!connections.TryGetValue(conversationId, out var kcpConnection))
                                 {
                                     // may incoming old packet, TODO: log it.
@@ -232,7 +218,7 @@ namespace KcpTransport
                             break;
                         case PacketType.Pong:
                             {
-                                conversationId = socketBuffer.ReadUint();
+                                conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
                                 if (!connections.TryGetValue(conversationId, out var kcpConnection))
                                 {
                                     // may incoming old packet, TODO: log it.
@@ -244,7 +230,7 @@ namespace KcpTransport
                             break;
                         case PacketType.Disconnect:
                             {
-                                conversationId = socketBuffer.ReadUint();
+                                conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
                                 if (!connections.TryRemove(conversationId, out var kcpConnection))
                                 {
                                     // may incoming old packet, TODO: log it.
@@ -257,7 +243,7 @@ namespace KcpTransport
                             break;
                         case PacketType.Unreliable:
                             {
-                                conversationId = socketBuffer.ReadUint();
+                                conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
                                 if (!connections.TryGetValue(conversationId, out var kcpConnection))
                                 {
                                     // may incoming old packet, TODO: log it.
@@ -267,8 +253,7 @@ namespace KcpTransport
 
                                 lock (kcpConnection.SyncRoot)
                                 {
-                                    kcpConnection.InputReceivedUnreliableBuffer(socketBuffer.ReadBytes());
-                                    kcpConnection.FlushReceivedBuffer(cancellationToken);
+                                    kcpConnection.InputReceivedUnreliableBuffer(socketBuffer.AsSpan(8, received - 8));
                                 }
                             }
                             break;
@@ -290,8 +275,9 @@ namespace KcpTransport
                                 {
                                     unsafe
                                     {
-                                        var socketBufferPointer = (byte*)Unsafe.AsPointer(ref socketBuffer);
-                                        if (!kcpConnection.InputReceivedKcpBuffer(socketBufferPointer, received.ReceivedBytes)) continue;
+                                        //var socketBufferPointer = (byte*)Unsafe.AsPointer(ref socketBuffer);
+                                        var socketBufferPointer = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(socketBuffer));
+                                        if (!kcpConnection.InputReceivedKcpBuffer(socketBufferPointer, received)) continue;
                                     }
 
                                     kcpConnection.ConsumeKcpFragments(receivedAddress, cancellationToken);
@@ -308,12 +294,13 @@ namespace KcpTransport
 
             static void SendHandshakeInitialResponse(Socket socket, SocketAddress clientAddress, uint conversationId, uint cookie, long timestamp)
             {
-                var data = new ByteBuf(20); // type(4) + conv(4) + cookie(4) + timestamp(8)
-                data.WriteUint((uint)PacketType.HandshakeInitialResponse);
-                data.WriteUint(conversationId);
-                data.WriteUint(cookie);
-                data.WriteLong(timestamp);
-                socket.SendTo(data.Bytes, SocketFlags.None, clientAddress.ToIPEndPoint());
+                Span<byte> data = stackalloc byte[20]; // type(4) + conv(4) + cookie(4) + timestamp(8)
+                MemoryMarshal.Write(data, (uint)PacketType.HandshakeInitialResponse);
+                MemoryMarshal.Write(data.Slice(4), conversationId);
+                MemoryMarshal.Write(data.Slice(8), cookie);
+                MemoryMarshal.Write(data.Slice(12), timestamp);
+
+                socket.SendTo(data, SocketFlags.None, clientAddress);
             }
 
             static void SendHandshakeOkResponse(Socket socket, SocketAddress clientAddress)

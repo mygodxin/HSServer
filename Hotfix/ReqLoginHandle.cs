@@ -23,6 +23,8 @@ namespace Hotfix
             //session.Account = account;
             //session.LoginTime = DateTime.UtcNow;
             //session.Channel = channel;
+            reqLogin.Account = reqLogin.Account + "1";
+            channel.Write(reqLogin);
         }
         public void OnLogin()
         {

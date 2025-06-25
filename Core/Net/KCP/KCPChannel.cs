@@ -26,7 +26,7 @@ namespace Core.Net.KCP
 
         public override void Write(Message message)
         {
-            _messages.Append(MessageHandle.Write(message));
+            _messages.Enqueue(MessageHandle.Write(message));
         }
 
         public override async Task StartAsync()

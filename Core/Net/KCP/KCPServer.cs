@@ -33,7 +33,8 @@ namespace Core.Net.KCP
             {
                 try
                 {
-                    var result = await _transport.AcceptConnectionAsync(_cts.Token);
+                    var result = _transport.AcceptConnection();
+                    if (result == null) continue;
                     if (result.ConnectionId == 0) continue; // 无效连接
 
                     var conn = new KCPChannel(result);

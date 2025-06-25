@@ -108,7 +108,11 @@ namespace HSServer
                 if (str != null && str != "")
                 {
                     Console.WriteLine($"[Client]{str}");
-                    client.SendReliableBuffer(Encoding.UTF8.GetBytes(str));
+                    var login = new ReqLogin();
+                    login.Account = str;
+                    login.Password = "123456";
+                    login.Platform = "taptap";
+                    client.SendReliableBuffer(MessageHandle.Write(login));
                 }
             }
         }
