@@ -4,12 +4,16 @@
 using Core;
 using Core.Net.KCP;
 using Core.Util;
+using Google.Protobuf.WellKnownTypes;
 using KcpTransport;
 using LoginServer;
 using Luban;
 using MessagePack;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Share;
+using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
@@ -32,7 +36,7 @@ namespace HSServer
             LoginServer.LoginServer.StartAsync();
 
             // 网关服务启动
-            //GateServer.GateServer.StartAsync();
+            GateServer.GateServer.StartAsync();
 
             // 游戏服务启动
             TestKCP();
@@ -59,35 +63,45 @@ namespace HSServer
             Console.WriteLine($"[Client] 开始连接");
             await client.ConnectAsync(new Uri("ws://localhost:3000/ws"), _cancel.Token);
             Console.WriteLine($"[Client] 连接成功");
-            var data = new byte[4096];
-            while (true)
+            var buffer = new ArraySegment<byte>(new byte[4096]); // 使用适当大小的缓冲区
+            var login = new ReqLogin();
+            login.Account = "123456";
+            login.Password = "123456";
+            login.Platform = "taptap";
+            var time = Stopwatch.GetTimestamp();
+            Logger.Warn($"[ws]开始发送:{time}");
+            var times = 0;
+            // 发送初始登录消息
+            await client.SendAsync(
+                MessageHandle.Write(login),
+                WebSocketMessageType.Binary,
+                true,
+                _cancel.Token);
+
+            while (client.State == WebSocketState.Open && !_cancel.IsCancellationRequested)
             {
-                var str = Console.ReadLine();
-                if (str != null && str != "")
+                // 接收消息
+                var receiveResult = await client.ReceiveAsync(buffer, _cancel.Token);
+
+                if (receiveResult.Count > 0)
                 {
-                    Console.WriteLine($"[Client]{str}");
-                    var login = new ReqLogin();
-                    login.Account = str;
-                    login.Password = "123456";
-                    login.Platform = "taptap";
+                    // 处理接收到的消息
+                    var messageData = new byte[receiveResult.Count];
+                    Array.Copy(buffer.Array, buffer.Offset, messageData, 0, receiveResult.Count);
 
-                    var d = HSerializer.Serialize<ReqLogin>(login);
-                    var c = HSerializer.Deserialize<Message>(d);
-                    var p = c as ReqLogin;
-                    Logger.Info(p.ToString());
+                    var msg = MessagePackSerializer.Deserialize<Message>(messageData);
+                    times++;
+
+                    // 每收到一条消息就发送响应（根据需求调整）
                     await client.SendAsync(MessageHandle.Write(login), WebSocketMessageType.Binary, true, _cancel.Token);
-                }
-                //if (client.State == WebSocketState.Open)
-                //{
-                //    var result = await client.ReceiveAsync(data, _cancel.Token);
-                //    if (result != null)
-                //    {
-                //        var msg = MessagePackSerializer.Deserialize<Message>(data);
-                //        Console.WriteLine(msg);
-                //    }
-                //}
 
+                    if (times >= 1000)
+                    {
+                        break;
+                    }
+                }
             }
+            Logger.Warn($"[ws]结束发送:{Stopwatch.GetElapsedTime(time).TotalSeconds}");
         }
 
         private static async void TestKCP()
@@ -96,25 +110,44 @@ namespace HSServer
             await server.StartAsync();
             Logger.Info("服务器启动成功");
             var client = await KcpConnection.ConnectAsync("127.0.0.1", 5000);
+            var time = Stopwatch.GetTimestamp();
+            Logger.Warn($"[kcp]开始发送:{time}");
+            //var times = 0;
             client.OnRecive = (byte[] bytes) =>
             {
                 var msg = MessagePackSerializer.Deserialize<Message>(bytes);
                 Console.WriteLine(msg);
                 Logger.Info($"[Client Recive] ");
+                //times++;
             };
+            //var login = new ReqLogin();
+            //login.Account = "123456";
+            //login.Password = "123456";
+            //login.Platform = "taptap";
+
             while (true)
             {
-                var str = Console.ReadLine();
-                if (str != null && str != "")
+                var input = Console.ReadLine();
+                if (input != null)
                 {
-                    Console.WriteLine($"[Client]{str}");
                     var login = new ReqLogin();
-                    login.Account = str;
+                    login.Account = input;
                     login.Password = "123456";
                     login.Platform = "taptap";
                     client.SendReliableBuffer(MessageHandle.Write(login));
                 }
             }
+            //while (true)
+            //{
+            //    //var str = Console.ReadLine();
+            //    //if (str != null && str != "")HandshakeOkRequest-recive
+            //    {
+            //        client.SendReliableBuffer(MessageHandle.Write(login));
+            //    }
+            //    //if (times == 1000)
+            //    //    break;
+            //}
+            Logger.Warn($"[kcp]结束发送:{Stopwatch.GetElapsedTime(time).TotalSeconds}");
         }
     }
 }

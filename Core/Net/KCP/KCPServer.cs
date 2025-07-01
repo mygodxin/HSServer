@@ -37,9 +37,7 @@ namespace Core.Net.KCP
                     if (result == null) continue;
                     if (result.ConnectionId == 0) continue; // 无效连接
 
-                    var conn = new KCPChannel(result);
-                    await conn.StartAsync();
-                    await conn.DisconnectAsync();
+                    var conn = new KCPSocket(result);
                 }
                 catch (OperationCanceledException)
                 {

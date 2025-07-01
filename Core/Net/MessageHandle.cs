@@ -1,3 +1,4 @@
+using Core.Net;
 using Core.Util;
 using Luban;
 
@@ -23,17 +24,17 @@ namespace Core
             var msgID = HandleManager.Instance.GetID(message.GetType());
             Span<byte> span = stackalloc byte[len];
 
-            var buf = new ByteBuf();
+            var buf = new ByteBuffer();
             buf.WriteInt(len);
             buf.WriteInt(msgID);
             buf.WriteBytes(bytes);
 
-            return buf.Bytes;
+            return buf.ToArray();
         }
 
         public static void Read(byte[] buffer, NetChannel channel)
         {
-            var buf = new ByteBuf(buffer);
+            var buf = new ByteBuffer(buffer);
             int msgLen = buf.ReadInt();
             int msgID = buf.ReadInt();
             ReadOnlyMemory<byte> bytes = buf.ReadBytes();

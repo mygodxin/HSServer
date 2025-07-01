@@ -1,4 +1,3 @@
-using Google.Protobuf.WellKnownTypes;
 using System;
 using System.Diagnostics;
 using System.Net;
@@ -24,7 +23,7 @@ namespace KcpTransport
 
     internal static class SynCookie
     {
-        public static (uint Cookie, long Timestamp) Generate(ReadOnlySpan<byte> hashKey, SocketAddress remoteAddress)
+        public static (uint Cookie, long Timestamp) Generate(ReadOnlySpan<byte> hashKey, IPEndPoint remoteAddress)
         {
             var timestamp = Stopwatch.GetTimestamp();
             var hash = GenerateCore(hashKey, remoteAddress, timestamp);
@@ -32,7 +31,7 @@ namespace KcpTransport
             return (hash, timestamp);
         }
 
-        public static bool Validate(ReadOnlySpan<byte> hashKey, TimeSpan timeout, uint cookie, SocketAddress remoteAddress, long timestamp)
+        public static bool Validate(ReadOnlySpan<byte> hashKey, TimeSpan timeout, uint cookie, IPEndPoint remoteAddress, long timestamp)
         {
             var cookie2 = GenerateCore(hashKey, remoteAddress, timestamp);
             if (cookie != cookie2)
@@ -49,47 +48,39 @@ namespace KcpTransport
             return false;
         }
 
-        static uint GenerateCore(ReadOnlySpan<byte> hashKey, SocketAddress remoteAddress, long timestamp)
+        static uint GenerateCore(ReadOnlySpan<byte> hashKey, IPEndPoint remoteAddress, long timestamp)
         {
-            // 1. 使用Span避免不必要的数组拷贝
-            Span<byte> source = stackalloc byte[remoteAddress.Size + sizeof(long)];
+            // 1. 准备缓冲区（IPv4: 16+8=24字节，IPv6: 16+2+8=26字节）
+            byte[] buffer = new byte[26]; // 按最大需求分配
 
-            // 2. 直接拷贝SocketAddress内容
-            for (int i = 0; i < remoteAddress.Size; i++)
+            // 2. 写入IP地址和端口
+            if (remoteAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
             {
-                source[i] = remoteAddress[i];
+                // IPv4地址 (4字节)
+                remoteAddress.Address.GetAddressBytes().CopyTo(buffer, 0);
+                // 端口 (2字节，大端序)
+                buffer[4] = (byte)(remoteAddress.Port >> 8);
+                buffer[5] = (byte)remoteAddress.Port;
+                // 时间戳位置从16开始
+                Buffer.BlockCopy(BitConverter.GetBytes(timestamp), 0, buffer, 16, 8);
+            }
+            else
+            {
+                // IPv6地址 (16字节)
+                remoteAddress.Address.GetAddressBytes().CopyTo(buffer, 0);
+                // 端口 (2字节，大端序)
+                buffer[16] = (byte)(remoteAddress.Port >> 8);
+                buffer[17] = (byte)remoteAddress.Port;
+                // 时间戳位置从18开始
+                Buffer.BlockCopy(BitConverter.GetBytes(timestamp), 0, buffer, 18, 8);
             }
 
-            // 3. 添加时间戳(确保字节序正确)
-            if (!BitConverter.TryWriteBytes(source.Slice(remoteAddress.Size), timestamp))
+            // 3. 计算HMAC-SHA256
+            using (var hmac = new HMACSHA256(hashKey.ToArray()))
             {
-                throw new InvalidOperationException("Failed to write timestamp bytes");
+                byte[] hash = hmac.ComputeHash(buffer);
+                return BitConverter.ToUInt32(hash, 0); // 取前4字节
             }
-
-            // 4. 计算HMAC-SHA256
-            using (var hmac = new HMACSHA256(hashKey.ToArray())) // 注意: ToArray()在这里是必要的
-            {
-                byte[] hash = hmac.ComputeHash(source.ToArray()); // 注意: Span需要转换为Array
-
-                // 5. 取前4字节作为uint(明确指定字节序)
-                return BitConverter.ToUInt32(hash, 0);
-            }
-            //Span<byte> source = stackalloc byte[remoteAddress.Size + 8];
-
-            //remoteAddress.Buffer.Span.CopyTo(source);
-            //MemoryMarshal.Write(source.Slice(remoteAddress.Size), timestamp);
-
-            //Span<byte> dest = stackalloc byte[HMACSHA256.HashSizeInBytes];
-            //HMACSHA256.TryHashData(hashKey, source, dest, out _);
-
-            //return MemoryMarshal.Read<uint>(dest);
-        }
-
-        internal static SocketAddress Clone(this SocketAddress socketAddress)
-        {
-            var clone = new SocketAddress(socketAddress.Family, socketAddress.Size);
-            socketAddress.Buffer.CopyTo(clone.Buffer);
-            return clone;
         }
     }
 }

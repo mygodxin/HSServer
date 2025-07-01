@@ -1,5 +1,5 @@
 using Core;
-using Core.Net.WS;
+//using Core.Net.WS;
 using Proto;
 using Proto.Remote;
 using Proto.Remote.GrpcNet;
@@ -9,7 +9,7 @@ namespace GateServer
 {
     public class GateServer
     {
-        private static WSServer _ws;
+        //private static WSServer _ws;
 
         public static async void StartAsync()
         {
@@ -36,13 +36,13 @@ namespace GateServer
 
         private static async void InitListener()
         {
-            _ws = new WSServer();
-            await _ws.StartAsync("http://127.0.0.1:3000");
+            //_ws = new WSServer();
+            //await _ws.StartAsync("http://127.0.0.1:3000");
         }
 
         public static async Task StopAsync()
         {
-            await _ws.StopAsync();
+            //await _ws.StopAsync();
         }
     }
 }

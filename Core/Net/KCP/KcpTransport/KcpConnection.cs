@@ -1,9 +1,10 @@
 #pragma warning disable CS8500
 
 using Core;
+//using Luban;
+using Core.Net;
+using Core.Net.UDP;
 using KcpTransport.LowLevel;
-using Luban;
-using MongoDB.Driver.Core.Connections;
 using System;
 using System.Buffers;
 using System.Collections;
@@ -21,43 +22,40 @@ using static KcpTransport.LowLevel.KcpMethods;
 
 namespace KcpTransport
 {
-
-    public sealed class KcpClientConnectionOptions : KcpOptions
+    // KcpConnections is both used for server and client
+    public class KcpConnection : IDisposable
     {
-        public EndPoint RemoteEndPoint { get; set; }
         public TimeSpan UpdatePeriod { get; set; } = TimeSpan.FromMilliseconds(5);
         public bool ConfigureAwait { get; set; } = false;
         public TimeSpan KeepAliveDelay { get; set; } = TimeSpan.FromSeconds(20);
         public TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromMinutes(1);
-        public Action<Socket, KcpClientConnectionOptions>? ConfigureSocket { get; set; }
-    }
-
-    public sealed class KcpDisconnectedException : Exception
-    {
-
-    }
-
-    // KcpConnections is both used for server and client
-    public class KcpConnection : IDisposable
-    {
+        public bool EnableNoDelay { get; set; } = true;
+        public int IntervalMilliseconds { get; set; } = 10; // ikcp_nodelay min is 10.
+        public int Resend { get; set; } = 2;
+        public bool EnableFlowControl { get; set; } = false;
+        public (int SendWindow, int ReceiveWindow) WindowSize { get; set; } = ((int)KcpMethods.IKCP_WND_SND, (int)KcpMethods.IKCP_WND_RCV);
+        public int MaximumTransmissionUnit { get; set; } = (int)KcpMethods.IKCP_MTU_DEF;
+        // public int MinimumRetransmissionTimeout { get; set; } this value is changed in ikcp_nodelay(and use there default) so no configurable.
         /// <summary>
         /// 回调
         /// </summary>
         public Action<byte[]> OnRecive;
+        private static SocketAsyncEventArgs sendArgs = new SocketAsyncEventArgs();
+        private static SocketAsyncEventArgs reciveArgs = new SocketAsyncEventArgs();
 
         static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(5);
 
         unsafe IKCPCB* kcp;
         uint conversationId;
-        SocketAddress? remoteAddress;
-        Socket socket;
-        Task? receiveEventLoopTask; // only used for client
-        Thread? updateKcpWorkerThread; // only used for client
+        IPEndPoint remoteAddress;
+        UdpSocket socket;
+        Task receiveEventLoopTask; // only used for client
+        Thread updateKcpWorkerThread; // only used for client
         //ValueTask<bool> lastFlushResult = default;
 
         readonly long startingTimestamp = Stopwatch.GetTimestamp();
         readonly TimeSpan keepAliveDelay;
-        CancellationTokenSource connectionCancellationTokenSource = new();
+        CancellationTokenSource connectionCancellationTokenSource = new CancellationTokenSource();
         readonly object gate = new object();
         long lastReceivedTimestamp;
         long lastPingSent;
@@ -65,28 +63,28 @@ namespace KcpTransport
 
         public uint ConnectionId => conversationId;
         internal object SyncRoot => gate;
-        private ByteBuf sendBuffer;
-        private ByteBuf reciveBuffer;
+        private ByteBuffer sendBuffer;
+        private ByteBuffer reciveBuffer;
 
         private readonly int MaxSize = 1024;
 
         // create by User(from KcpConnection.ConnectAsync), for client connection
-        unsafe KcpConnection(Socket socket, uint conversationId, KcpClientConnectionOptions options)
+        unsafe KcpConnection(UdpSocket socket, uint conversationId)
         {
             this.conversationId = conversationId;
-            this.keepAliveDelay = options.KeepAliveDelay;
+            this.keepAliveDelay = KeepAliveDelay;
             this.kcp = ikcp_create(conversationId, GCHandle.ToIntPtr(GCHandle.Alloc(this)).ToPointer());
             this.kcp->output = &KcpOutputCallback;
-            ConfigKcpWorkMode(options.EnableNoDelay, options.IntervalMilliseconds, options.Resend, options.EnableFlowControl);
-            ConfigKcpWindowSize(options.WindowSize.SendWindow, options.WindowSize.ReceiveWindow);
-            ConfigKcpMaximumTransmissionUnit(options.MaximumTransmissionUnit);
+            ConfigKcpWorkMode(EnableNoDelay, IntervalMilliseconds, Resend, EnableFlowControl);
+            ConfigKcpWindowSize(WindowSize.SendWindow, WindowSize.ReceiveWindow);
+            ConfigKcpMaximumTransmissionUnit(MaximumTransmissionUnit);
 
-            sendBuffer = new ByteBuf(options.MaximumTransmissionUnit);
-            reciveBuffer = new ByteBuf(options.MaximumTransmissionUnit);
+            sendBuffer = new ByteBuffer(MaximumTransmissionUnit);
+            reciveBuffer = new ByteBuffer(MaximumTransmissionUnit);
             this.socket = socket;
             this.lastReceivedTimestamp = startingTimestamp;
 
-            this.receiveEventLoopTask = StartSocketEventLoopAsync(options);
+            this.receiveEventLoopTask = StartSocketEventLoopAsync();
 
 
             UpdateKcp(); // initial set kcp timestamp
@@ -96,31 +94,27 @@ namespace KcpTransport
                 IsBackground = true,
                 Priority = ThreadPriority.AboveNormal,
             };
-            updateKcpWorkerThread.Start(options);
+            updateKcpWorkerThread.Start();
         }
 
         // create from Listerner for server connection
-        internal unsafe KcpConnection(uint conversationId, KcpListenerOptions options, SocketAddress remoteAddress)
+        internal unsafe KcpConnection(uint conversationId, IPEndPoint remoteAddress)
         {
             this.conversationId = conversationId;
-            this.keepAliveDelay = options.KeepAliveDelay;
+            this.keepAliveDelay = KeepAliveDelay;
             this.kcp = ikcp_create(conversationId, GCHandle.ToIntPtr(GCHandle.Alloc(this)).ToPointer());
             this.kcp->output = &KcpOutputCallback;
-            ConfigKcpWorkMode(options.EnableNoDelay, options.IntervalMilliseconds, options.Resend, options.EnableFlowControl);
-            ConfigKcpWindowSize(options.WindowSize.SendWindow, options.WindowSize.ReceiveWindow);
-            ConfigKcpMaximumTransmissionUnit(options.MaximumTransmissionUnit);
+            ConfigKcpWorkMode(EnableNoDelay, IntervalMilliseconds, Resend, EnableFlowControl);
+            ConfigKcpWindowSize(WindowSize.SendWindow, WindowSize.ReceiveWindow);
+            ConfigKcpMaximumTransmissionUnit(MaximumTransmissionUnit);
 
-            this.remoteAddress = remoteAddress.Clone();
+            this.remoteAddress = remoteAddress;
 
-            sendBuffer = new ByteBuf(options.MaximumTransmissionUnit);
-            reciveBuffer = new ByteBuf(options.MaximumTransmissionUnit);
+            sendBuffer = new ByteBuffer(MaximumTransmissionUnit);
+            reciveBuffer = new ByteBuffer(MaximumTransmissionUnit);
             // bind same port and connect client IP, this socket is used only for Send
-            this.socket = new Socket(remoteAddress.Family, SocketType.Dgram, ProtocolType.Udp);
-            this.socket.Blocking = false;
-            this.socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            options.ConfigureSocket?.Invoke(socket, options, ListenerSocketType.Send);
-            this.socket.Bind(options.ListenEndPoint);
-            this.socket.Connect(remoteAddress.ToIPEndPoint());
+
+            this.socket = new UdpSocket(remoteAddress);
 
             this.lastReceivedTimestamp = startingTimestamp;
 
@@ -133,74 +127,58 @@ namespace KcpTransport
             return ConnectAsync(new IPEndPoint(IPAddress.Parse(host), port), cancellationToken);
         }
 
-        public static ValueTask<KcpConnection> ConnectAsync(EndPoint remoteEndPoint, CancellationToken cancellationToken = default)
+        public static async ValueTask<KcpConnection> ConnectAsync(IPEndPoint remoteEndPoint, CancellationToken cancellationToken = default)
         {
-            return ConnectAsync(new KcpClientConnectionOptions { RemoteEndPoint = remoteEndPoint }, cancellationToken);
-        }
+            var socket = new UdpSocket(remoteEndPoint);
+            await socket.ConnectAsync(remoteEndPoint.Address.ToString(), remoteEndPoint.Port);
 
-        public static async ValueTask<KcpConnection> ConnectAsync(KcpClientConnectionOptions options, CancellationToken cancellationToken = default)
-        {
-            var socket = new Socket(options.RemoteEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
-            socket.Blocking = false;
-            options.ConfigureSocket?.Invoke(socket, options);
-            await socket.ConnectAsync(options.RemoteEndPoint, cancellationToken).ConfigureAwait(options.ConfigureAwait);
+            var buffer = new byte[4];
+            var initID = (uint)PacketType.HandshakeInitialRequest;
+            MemoryMarshal.Write(buffer, ref initID);
+            await socket.SendAsync(buffer);
 
-            SendHandshakeInitialRequest(socket);
+            var receiveInit = await socket.ReceiveAsync();
+            if (receiveInit.Item2 != 20) throw new Exception();
 
-            // TODO: retry?
-            var handshakeBuffer = new byte[20];
-            var received = await socket.ReceiveAsync(handshakeBuffer);
-            if (received != 20) throw new Exception();
+            var receiveBytes = new ByteBuffer(receiveInit.Item1);
+            var msgID = receiveBytes.ReadUint();
+            var conversationId = receiveBytes.ReadUint();
+            var cookie = receiveBytes.ReadUint();
+            var timesamp = receiveBytes.ReadLong();
+            var sendBytes = new ByteBuffer(20);
+            sendBytes.WriteUint((uint)PacketType.HandshakeOkRequest);
+            sendBytes.WriteUint(conversationId);
+            sendBytes.WriteUint(cookie);
+            sendBytes.WriteLong(timesamp);
+            await socket.SendAsync(sendBytes.ToArray());
 
-            var conversationId = MemoryMarshal.Read<uint>(handshakeBuffer.AsSpan(4));
-
-            SendHandshakeOkRequest(socket, handshakeBuffer);
-
-            var received2 = await socket.ReceiveAsync(handshakeBuffer);
-            if (received2 != 4) throw new Exception();
-            var responseCode = (PacketType)MemoryMarshal.Read<uint>(handshakeBuffer);
+            var receiveOK = await socket.ReceiveAsync();
+            if (receiveOK.Item2 != 4) throw new Exception();
+            var responseCode = (PacketType)MemoryMarshal.Read<uint>(receiveOK.Item1);
 
             if (responseCode != PacketType.HandshakeOkResponse) throw new Exception();
 
-            var connection = new KcpConnection(socket, conversationId, options);
+            var connection = new KcpConnection(socket, conversationId);
             return connection;
-
-            static void SendHandshakeInitialRequest(Socket socket)
-            {
-                Span<byte> data = stackalloc byte[4];
-                MemoryMarshal.Write(data, (uint)PacketType.HandshakeInitialRequest);
-                socket.Send(data);
-            }
-
-            static void SendHandshakeOkRequest(Socket socket, Span<byte> data)
-            {
-                MemoryMarshal.Write(data, (uint)PacketType.HandshakeOkRequest);
-                socket.Send(data);
-            }
         }
 
-        async Task StartSocketEventLoopAsync(KcpClientConnectionOptions options)
+        async Task StartSocketEventLoopAsync()
         {
-            await Task.CompletedTask.ConfigureAwait(true);
-            var cancellationToken = this.connectionCancellationTokenSource.Token;
-
-            var socketBuffer = ArrayPool<byte>.Shared.Rent(options.MaximumTransmissionUnit);
-
             while (true)
             {
                 if (isDisposed) return;
 
                 // Socket is datagram so received contains full block
-                var received = await socket.ReceiveAsync(socketBuffer, SocketFlags.None, cancellationToken);
-
-                var conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(0, received));
+                var socketBuffer = await socket.ReceiveAsync();
+                var buffer = new ByteBuffer(socketBuffer.Item1);
+                var conversationId = buffer.ReadUint();
                 var packetType = (PacketType)conversationId;
                 switch (packetType)
                 {
                     case PacketType.Unreliable:
                         {
-                            conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
-                            InputReceivedUnreliableBuffer(socketBuffer.AsSpan(8, received - 8));
+                            conversationId = buffer.ReadUint();
+                            InputReceivedUnreliableBuffer(buffer.ReadBytes());
                         }
                         break;
                     case PacketType.Ping:
@@ -224,12 +202,12 @@ namespace KcpTransport
 
                             unsafe
                             {
-                                //var socketBufferPointer = (byte*)Unsafe.AsPointer(ref socketBuffer);
-                                var socketBufferPointer = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(socketBuffer));
-                                if (!InputReceivedKcpBuffer(socketBufferPointer, received)) continue;
+                                //var buf = buffer.ToArray();
+                                var socketBufferPointer = (byte*)Unsafe.AsPointer(ref socketBuffer.Item1);
+                                if (!InputReceivedKcpBuffer(socketBufferPointer, socketBuffer.Item2)) continue;
                             }
 
-                            ConsumeKcpFragments(null, cancellationToken);
+                            ConsumeKcpFragments(null);
                         }
                         break;
                 }
@@ -237,12 +215,11 @@ namespace KcpTransport
         }
 
         // same of KcpListener.RunUpdateKcpConnectionLoop
-        void RunUpdateKcpLoop(object? state)
+        void RunUpdateKcpLoop(object state)
         {
             var cancellationToken = connectionCancellationTokenSource.Token;
-            var options = (KcpClientConnectionOptions)state!;
-            var period = options.UpdatePeriod;
-            var timeout = options.ConnectionTimeout;
+            var period = UpdatePeriod;
+            var timeout = ConnectionTimeout;
             var waitTime = (int)period.TotalMilliseconds;
 
             while (true)
@@ -285,7 +262,7 @@ namespace KcpTransport
             }
         }
 
-        internal unsafe void ConsumeKcpFragments(SocketAddress? remoteAddress, CancellationToken cancellationToken)
+        internal unsafe void ConsumeKcpFragments(IPEndPoint remoteAddress)
         {
             lock (gate)
             {
@@ -300,14 +277,13 @@ namespace KcpTransport
                     }
 
                     reciveBuffer.Clear();
-                    var buffer = reciveBuffer.Bytes;
+                    var buffer = reciveBuffer.ToArray();
 
                     fixed (byte* p = buffer)
                     {
                         var len = ikcp_recv(kcp, p, buffer.Length);
                         if (len > 0)
                         {
-                            reciveBuffer.WriterIndex = len;
                             OnRecive(buffer);
                         }
                     }
@@ -347,7 +323,7 @@ namespace KcpTransport
             {
                 if (isDisposed) return;
 
-                socket.Send(sendBuffer.Bytes);
+                socket.SendAsync(sendBuffer.ReadBytes());
             }
         }
 
@@ -414,7 +390,7 @@ namespace KcpTransport
                     {
                         if (isDisposed) return;
 
-                        socket.Send(sendBuffer.Bytes);
+                        socket.SendAsync(sendBuffer.ToArray());
                     }
                 }
             }
@@ -432,7 +408,7 @@ namespace KcpTransport
             {
                 if (isDisposed) return;
 
-                socket.Send(sendBuffer.Bytes);
+                socket.SendAsync(sendBuffer.ToArray());
             }
         }
 
@@ -509,12 +485,12 @@ namespace KcpTransport
             if (isDisposed) return;
 
             // Send disconnect message
-            var message = new ByteBuf(8);
-            message.WriteUint((uint)PacketType.Disconnect);
-            message.WriteUint(conversationId);
+            sendBuffer.Clear();
+            sendBuffer.WriteUint((uint)PacketType.Disconnect);
+            sendBuffer.WriteUint(conversationId);
             lock (gate)
             {
-                socket.Send(message.Bytes);
+                socket.SendAsync(sendBuffer.ToArray());
             }
         }
 
@@ -538,12 +514,12 @@ namespace KcpTransport
                     connectionCancellationTokenSource.Cancel();
                     connectionCancellationTokenSource.Dispose();
 
-                    GCHandle.FromIntPtr((nint)kcp->user).Free();
+                    GCHandle.FromIntPtr((IntPtr)kcp->user).Free();
                     ikcp_release(kcp);
                     kcp = null;
 
                     socket.Dispose();
-                    socket = null!;
+                    socket = null;
 
                     sendBuffer.Clear();
                     reciveBuffer.Clear();
@@ -551,7 +527,7 @@ namespace KcpTransport
                 else
                 {
                     // only cleanup unmanaged resource
-                    GCHandle.FromIntPtr((nint)kcp->user).Free();
+                    GCHandle.FromIntPtr((IntPtr)kcp->user).Free();
                     ikcp_release(kcp);
                 }
             }
@@ -565,10 +541,11 @@ namespace KcpTransport
 
         static unsafe int KcpOutputCallback(byte* buf, int len, IKCPCB* kcp, void* user)
         {
-            var self = (KcpConnection)GCHandle.FromIntPtr((IntPtr)user).Target!;
+            var self = (KcpConnection)GCHandle.FromIntPtr((IntPtr)user).Target;
             var buffer = new Span<byte>(buf, len);
 
-            var sent = self.socket.Send(buffer);
+            var sent = self.socket.Send(buffer.ToArray());
+            Console.WriteLine($"[KcpOutputCallback] len={len}, self={self.ConnectionId}");
             return sent;
         }
 
