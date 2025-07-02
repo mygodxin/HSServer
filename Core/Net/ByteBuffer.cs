@@ -1,135 +1,209 @@
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.IO;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Core.Net
 {
-    public class ByteBuffer : IDisposable
+    public sealed unsafe class ByteBuffer : IDisposable
     {
-        private MemoryStream stream;
-        private BinaryWriter writer;
-        private BinaryReader reader;
-        private int bytesLen;
+        private byte[] _buffer;
+        private int _position;
+        private int _length;
+        private int _capacity;
+        private bool _isReadMode;
+        private bool _disposed;
 
-        // 构造函数 - 写入模式
+        // ===== 构造函数优化 =====
         public ByteBuffer(int len = 64)
         {
-            bytesLen = len;
-            stream = new MemoryStream(bytesLen);
-            writer = new BinaryWriter(stream);
+            _capacity = Math.Max(64, len);
+            _buffer = ArrayPool<byte>.Shared.Rent(_capacity); // 内存池复用 [5](@ref)
+            _isReadMode = false;
         }
 
-        // 构造函数 - 读取模式
-        public ByteBuffer(byte[] data)
+        public ByteBuffer(byte[] data) : this(data, 0, data.Length) { }
+
+        public ByteBuffer(byte[] data, int offset, int count)
         {
-            bytesLen = data.Length;
-            var readOnlyBuffer = new byte[data.Length];
-            Array.Copy(data, readOnlyBuffer, data.Length);
-            stream = new MemoryStream(readOnlyBuffer);
-            reader = new BinaryReader(stream);
+            if (offset < 0 || count < 0 || offset + count > data.Length)
+                throw new ArgumentOutOfRangeException();
+
+            _capacity = count;
+            _buffer = ArrayPool<byte>.Shared.Rent(count);
+            Buffer.BlockCopy(data, offset, _buffer, 0, count); // 避免Array.Copy [7](@ref)
+            _length = count;
+            _isReadMode = true;
         }
 
-        // 写入 int (4字节)
+        // ===== 核心优化技术 =====
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void EnsureCapacity(int required)
+        {
+            if (_position + required <= _capacity) return;
+
+            // 指数扩容策略 [6](@ref)
+            int newCapacity = Math.Max(_capacity * 2, _position + required);
+            byte[] newBuffer = ArrayPool<byte>.Shared.Rent(newCapacity);
+            Buffer.BlockCopy(_buffer, 0, newBuffer, 0, _length);
+            ArrayPool<byte>.Shared.Return(_buffer); // 归还旧内存池
+            _buffer = newBuffer;
+            _capacity = newCapacity;
+        }
+
+        // ===== 写入方法优化 =====
         public void WriteInt(int value)
         {
-            writer.Write(value);
+            if (_isReadMode) throw new InvalidOperationException("Buffer in read mode");
+            EnsureCapacity(4);
+            BinaryPrimitives.WriteInt32LittleEndian(_buffer.AsSpan(_position), value);
+            _position += 4;
+            if (_position > _length) _length = _position;
         }
 
-        // 读取 int (4字节)
-        public int ReadInt()
-        {
-            return reader.ReadInt32();
-        }
-
-        // 写入无符号 int (4字节)
         public void WriteUint(uint value)
         {
-            writer.Write(value);
+            if (_isReadMode) throw new InvalidOperationException("Buffer in read mode");
+            EnsureCapacity(4);
+            BinaryPrimitives.WriteUInt32LittleEndian(_buffer.AsSpan(_position), value);
+            _position += 4;
+            if (_position > _length) _length = _position;
         }
 
-        // 读取无符号 int (4字节)
-        public uint ReadUint()
-        {
-            return reader.ReadUInt32();
-        }
-
-        // 写入 long (8字节)
         public void WriteLong(long value)
         {
-            writer.Write(value);
+            if (_isReadMode) throw new InvalidOperationException("Buffer in read mode");
+            EnsureCapacity(8);
+            BinaryPrimitives.WriteInt64LittleEndian(_buffer.AsSpan(_position), value);
+            _position += 8;
+            if (_position > _length) _length = _position;
         }
 
-        // 读取 long (8字节)
-        public long ReadLong()
-        {
-            return reader.ReadInt64();
-        }
-
-        // 写入字符串 (UTF-8编码，带长度前缀)
         public void WriteString(string value)
         {
-            byte[] bytes = Encoding.UTF8.GetBytes(value);
-            writer.Write(bytes.Length);
-            writer.Write(bytes);
+            if (_isReadMode) throw new InvalidOperationException("Buffer in read mode");
+
+            int maxLen = Encoding.UTF8.GetMaxByteCount(value.Length);
+            EnsureCapacity(maxLen + 4);
+
+            // 直接写入长度前缀
+            BinaryPrimitives.WriteInt32LittleEndian(_buffer.AsSpan(_position), value.Length);
+            _position += 4;
+
+            // 直接编码到缓冲区 [9](@ref)
+            int actualBytes = Encoding.UTF8.GetBytes(
+                value,
+                _buffer.AsSpan(_position, maxLen)
+            );
+            _position += actualBytes;
+            _length = Math.Max(_length, _position);
         }
 
-        // 读取字符串 (UTF-8编码，带长度前缀)
-        public string ReadString()
-        {
-            int length = reader.ReadInt32();
-            byte[] bytes = reader.ReadBytes(length);
-            return Encoding.UTF8.GetString(bytes);
-        }
-
-        // 写入 byte 数组 (带长度前缀)
         public void WriteBytes(byte[] value)
         {
-            writer.Write(value.Length);
-            writer.Write(value);
+            if (_isReadMode) throw new InvalidOperationException("Buffer in read mode");
+            EnsureCapacity(value.Length + 4);
+
+            // 写入长度前缀
+            BinaryPrimitives.WriteInt32LittleEndian(_buffer.AsSpan(_position), value.Length);
+            _position += 4;
+
+            // 批量复制 [8](@ref)
+            value.CopyTo(_buffer.AsSpan(_position));
+            _position += value.Length;
+            _length = Math.Max(_length, _position);
         }
 
-        // 读取 byte 数组 (带长度前缀)
+        // ===== 读取方法优化 =====
+        public int ReadInt()
+        {
+            CheckReadMode(4);
+            int value = BinaryPrimitives.ReadInt32LittleEndian(_buffer.AsSpan(_position));
+            _position += 4;
+            return value;
+        }
+
+        public uint ReadUint()
+        {
+            CheckReadMode(4);
+            uint value = BinaryPrimitives.ReadUInt32LittleEndian(_buffer.AsSpan(_position));
+            _position += 4;
+            return value;
+        }
+
+        public long ReadLong()
+        {
+            CheckReadMode(8);
+            long value = BinaryPrimitives.ReadInt64LittleEndian(_buffer.AsSpan(_position));
+            _position += 8;
+            return value;
+        }
+
+        public string ReadString()
+        {
+            CheckReadMode(4);
+            int length = BinaryPrimitives.ReadInt32LittleEndian(_buffer.AsSpan(_position));
+            _position += 4;
+
+            CheckReadMode(length);
+            string value = Encoding.UTF8.GetString(_buffer, _position, length); // 避免中间数组 [9](@ref)
+            _position += length;
+            return value;
+        }
+
         public byte[] ReadBytes()
         {
-            int length = reader.ReadInt32();
-            return reader.ReadBytes(length);
+            CheckReadMode(4);
+            int length = BinaryPrimitives.ReadInt32LittleEndian(_buffer.AsSpan(_position));
+            _position += 4;
+
+            CheckReadMode(length);
+            byte[] result = new byte[length];
+            Buffer.BlockCopy(_buffer, _position, result, 0, length); // 高效块复制
+            _position += length;
+            return result;
         }
 
-        // 获取写入的数据
-        public byte[] ToArray()
+        // ===== 辅助方法优化 =====
+        public byte[] Bytes
         {
-            writer.Flush();
-            return stream.ToArray();
+            get
+            {
+                byte[] result = new byte[_length];
+                Buffer.BlockCopy(_buffer, 0, result, 0, _length);
+                return result;
+            }
         }
 
-        // 重置读取位置
-        public void ResetPosition()
-        {
-            stream.Seek(0, SeekOrigin.Begin);
-        }
+        public void ResetPosition() => _position = 0;
 
-        // 获取剩余可读字节数
-        public int Remaining()
-        {
-            return (int)(stream.Length - stream.Position);
-        }
+        public int Remaining() => _length - _position;
 
-        // 实现 IDisposable 接口
-        public void Dispose()
-        {
-            writer?.Dispose();
-            reader?.Dispose();
-            stream?.Dispose();
-        }
-
-        // 清空缓冲区，准备重新使用
         public void Clear()
         {
-            stream = new MemoryStream(bytesLen);
-            writer = new BinaryWriter(stream);
+            _position = 0;
+            _length = 0;
+            // 保留已分配的缓冲区供复用 [5,6](@ref)
+        }
 
-            stream.SetLength(0);
-            stream.Position = 0;
+        // ===== 安全释放模式 =====
+        public void Dispose()
+        {
+            if (_disposed) return;
+            ArrayPool<byte>.Shared.Return(_buffer);
+            _buffer = null!;
+            _disposed = true;
+        }
+
+        // ===== 私有辅助方法 =====
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CheckReadMode(int required)
+        {
+            if (!_isReadMode) throw new InvalidOperationException("Buffer not in read mode");
+            if (_position + required > _length) throw new EndOfStreamException();
         }
     }
 }

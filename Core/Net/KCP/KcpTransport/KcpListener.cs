@@ -248,21 +248,21 @@ namespace KcpTransport
             data.WriteUint(cookie);
             data.WriteLong(timestamp);
 
-            socket.SendToAsync(clientAddress, data.ToArray());
+            socket.SendToAsync(clientAddress, data.Bytes);
         }
 
         static void SendHandshakeOkResponse(UdpSocketServer socket, IPEndPoint clientAddress)
         {
             var data = new ByteBuffer(4);
             data.WriteUint((uint)PacketType.HandshakeOkResponse);
-            socket.SendToAsync(clientAddress, data.ToArray());
+            socket.SendToAsync(clientAddress, data.Bytes);
         }
 
         static void SendHandshakeNgResponse(UdpSocketServer socket, IPEndPoint clientAddress)
         {
             var data = new ByteBuffer(4);
             data.WriteUint((uint)PacketType.HandshakeNgResponse);
-            socket.SendToAsync(clientAddress, data.ToArray());
+            socket.SendToAsync(clientAddress, data.Bytes);
         }
 
         void RunUpdateKcpConnectionLoop(object state)

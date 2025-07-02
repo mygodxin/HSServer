@@ -146,7 +146,7 @@ namespace KcpTransport
             sendBytes.WriteUint(conversationId);
             sendBytes.WriteUint(cookie);
             sendBytes.WriteLong(timesamp);
-            await socket.SendAsync(sendBytes.ToArray());
+            await socket.SendAsync(sendBytes.Bytes);
 
             var receiveOK = await socket.ReceiveAsync();
             if (receiveOK.Item2 != 4) throw new Exception();
@@ -381,7 +381,7 @@ namespace KcpTransport
                     {
                         if (isDisposed) return;
 
-                        socket.SendAsync(sendBuffer.ToArray());
+                        socket.SendAsync(sendBuffer.Bytes);
                     }
                 }
             }
@@ -399,7 +399,7 @@ namespace KcpTransport
             {
                 if (isDisposed) return;
 
-                socket.SendAsync(sendBuffer.ToArray());
+                socket.SendAsync(sendBuffer.Bytes);
             }
         }
 
@@ -481,7 +481,7 @@ namespace KcpTransport
             sendBuffer.WriteUint(conversationId);
             lock (gate)
             {
-                socket.SendAsync(sendBuffer.ToArray());
+                socket.SendAsync(sendBuffer.Bytes);
             }
         }
 

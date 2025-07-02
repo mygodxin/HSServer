@@ -29,7 +29,7 @@ namespace Core
             buf.WriteInt(msgID);
             buf.WriteBytes(bytes);
 
-            return buf.ToArray();
+            return buf.Bytes;
         }
 
         public static void Read(byte[] buffer, NetChannel channel)
