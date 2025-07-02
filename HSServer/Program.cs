@@ -121,8 +121,8 @@ namespace HSServer
                 int msgLen = buf.ReadInt();
                 int msgID = buf.ReadInt();
                 ReadOnlyMemory<byte> data = buf.ReadBytes();
-                var message = HSerializer.Deserialize<Message>(data);
-                Logger.Info($"[Client Recive] " + message.ToString());
+                var message = (ReqLogin)HSerializer.Deserialize<Message>(data);
+                Logger.Info($"[Client Recive] " + message.Account);
                 //times++;
             };
             //var login = new ReqLogin();
