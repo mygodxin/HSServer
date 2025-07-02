@@ -1,7 +1,6 @@
 #pragma warning disable CS8500
 
 using Core;
-//using Luban;
 using Core.Net;
 using Core.Net.UDP;
 using KcpTransport.LowLevel;
@@ -35,7 +34,7 @@ namespace KcpTransport
         public bool EnableFlowControl { get; set; } = false;
         public (int SendWindow, int ReceiveWindow) WindowSize { get; set; } = ((int)KcpMethods.IKCP_WND_SND, (int)KcpMethods.IKCP_WND_RCV);
         public int MaximumTransmissionUnit { get; set; } = (int)KcpMethods.IKCP_MTU_DEF;
-        // public int MinimumRetransmissionTimeout { get; set; } this value is changed in ikcp_nodelay(and use there default) so no configurable.
+
         /// <summary>
         /// 回调
         /// </summary>
@@ -51,7 +50,6 @@ namespace KcpTransport
         UdpSocket socket;
         Task receiveEventLoopTask; // only used for client
         Thread updateKcpWorkerThread; // only used for client
-        //ValueTask<bool> lastFlushResult = default;
 
         readonly long startingTimestamp = Stopwatch.GetTimestamp();
         readonly TimeSpan keepAliveDelay;
@@ -87,7 +85,7 @@ namespace KcpTransport
             this.receiveEventLoopTask = StartSocketEventLoopAsync();
 
 
-            UpdateKcp(); // initial set kcp timestamp
+            UpdateKcp();
             updateKcpWorkerThread = new Thread(RunUpdateKcpLoop)
             {
                 Name = $"{nameof(KcpConnection)}-{conversationId}",
@@ -112,14 +110,12 @@ namespace KcpTransport
 
             sendBuffer = new ByteBuffer(MaximumTransmissionUnit);
             reciveBuffer = new ByteBuffer(MaximumTransmissionUnit);
-            // bind same port and connect client IP, this socket is used only for Send
 
             this.socket = new UdpSocket(remoteAddress);
 
             this.lastReceivedTimestamp = startingTimestamp;
 
-            UpdateKcp(); // initial set kcp timestamp
-                         // StartUpdateKcpLoopAsync(); server operation, Update will be called from KcpListener so no need update self.
+            UpdateKcp();
         }
 
         public static ValueTask<KcpConnection> ConnectAsync(string host, int port, CancellationToken cancellationToken = default)
@@ -168,7 +164,6 @@ namespace KcpTransport
             {
                 if (isDisposed) return;
 
-                // Socket is datagram so received contains full block
                 var socketBuffer = await socket.ReceiveAsync();
                 var buffer = new ByteBuffer(socketBuffer.Item1);
                 var conversationId = buffer.ReadUint();
@@ -202,8 +197,7 @@ namespace KcpTransport
 
                             unsafe
                             {
-                                //var buf = buffer.ToArray();
-                                var socketBufferPointer = (byte*)Unsafe.AsPointer(ref socketBuffer.Item1);
+                                var socketBufferPointer = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(socketBuffer.Item1.AsSpan()));
                                 if (!InputReceivedKcpBuffer(socketBufferPointer, socketBuffer.Item2)) continue;
                             }
 
@@ -276,12 +270,11 @@ namespace KcpTransport
                         // TODO: shutdown existing socket and create new one?
                     }
 
-                    reciveBuffer.Clear();
-                    var buffer = reciveBuffer.ToArray();
+                    var buffer = new byte[size];
 
                     fixed (byte* p = buffer)
                     {
-                        var len = ikcp_recv(kcp, p, buffer.Length);
+                        var len = ikcp_recv(kcp, p, size);
                         if (len > 0)
                         {
                             OnRecive(buffer);
@@ -296,8 +289,6 @@ namespace KcpTransport
             lastReceivedTimestamp = Stopwatch.GetTimestamp();
             OnRecive(span.ToArray());
         }
-
-        // KcpStream.Write operations send buffer to socket.
 
         public unsafe void SendReliableBuffer(ReadOnlySpan<byte> buffer)
         {
@@ -545,7 +536,6 @@ namespace KcpTransport
             var buffer = new Span<byte>(buf, len);
 
             var sent = self.socket.Send(buffer.ToArray());
-            Console.WriteLine($"[KcpOutputCallback] len={len}, self={self.ConnectionId}");
             return sent;
         }
 

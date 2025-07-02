@@ -2,6 +2,7 @@
 
 
 using Core;
+using Core.Net;
 using Core.Net.KCP;
 using Core.Util;
 using Google.Protobuf.WellKnownTypes;
@@ -17,6 +18,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
+using System.Threading.Channels;
 
 namespace HSServer
 {
@@ -106,18 +108,21 @@ namespace HSServer
 
         private static async void TestKCP()
         {
-            var server = new KcpServer(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 5000));
+            var server = new KcpServer("127.0.0.1", 5000);
             await server.StartAsync();
             Logger.Info("服务器启动成功");
-            var client = await KcpConnection.ConnectAsync("127.0.0.1", 5000);
+            var client = new KCPSocket("127.0.0.1", 5000);
             var time = Stopwatch.GetTimestamp();
             Logger.Warn($"[kcp]开始发送:{time}");
             //var times = 0;
-            client.OnRecive = (byte[] bytes) =>
+            client.OnDataReceived += (byte[] bytes) =>
             {
-                var msg = MessagePackSerializer.Deserialize<Message>(bytes);
-                Console.WriteLine(msg);
-                Logger.Info($"[Client Recive] ");
+                var buf = new ByteBuffer(bytes);
+                int msgLen = buf.ReadInt();
+                int msgID = buf.ReadInt();
+                ReadOnlyMemory<byte> data = buf.ReadBytes();
+                var message = HSerializer.Deserialize<Message>(data);
+                Logger.Info($"[Client Recive] " + message.ToString());
                 //times++;
             };
             //var login = new ReqLogin();
@@ -134,7 +139,7 @@ namespace HSServer
                     login.Account = input;
                     login.Password = "123456";
                     login.Platform = "taptap";
-                    client.SendReliableBuffer(MessageHandle.Write(login));
+                    client.Write(login);
                 }
             }
             //while (true)

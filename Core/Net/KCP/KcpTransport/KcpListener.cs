@@ -117,24 +117,21 @@ namespace KcpTransport
                     case PacketType.HandshakeInitialRequest:
                     ISSUE_CONVERSATION_ID:
                         {
-                            conversationId = (uint)random.Next(100, int.MaxValue); // 0~99 is reserved
+                            conversationId = (uint)random.Next(100, int.MaxValue);
                             if (connections.ContainsKey(conversationId))
                             {
                                 goto ISSUE_CONVERSATION_ID;
                             }
 
-                            // send tentative id and cookie to avoid syn-flood(don't allocate memory in this phase)
                             var (cookie, timestamp) = SynCookie.Generate(DefaultRandomHashKey, receivedAddress);
-                            Logger.Error($"[send] conversationId={conversationId}, cookie={cookie}, timestamp={timestamp}");
                             SendHandshakeInitialResponse(socket, receivedAddress, conversationId, cookie, timestamp);
                         }
                         break;
                     case PacketType.HandshakeOkRequest:
                         {
-                            conversationId = socketBuffer.ReadUint();//MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
-                            var cookie = socketBuffer.ReadUint();//MemoryMarshal.Read<uint>(socketBuffer.AsSpan(8, received - 8));
-                            var timestamp = socketBuffer.ReadLong();//MemoryMarshal.Read<long>(socketBuffer.AsSpan(12, received - 12));
-                            Logger.Error($"[receive] conversationId={conversationId}, cookie={cookie}, timestamp={timestamp}");
+                            conversationId = socketBuffer.ReadUint();
+                            var cookie = socketBuffer.ReadUint();
+                            var timestamp = socketBuffer.ReadLong();
                             if (!SynCookie.Validate(DefaultRandomHashKey, HandshakeTimeout, cookie, receivedAddress, timestamp))
                             {
                                 SendHandshakeNgResponse(socket, receivedAddress);
@@ -211,7 +208,6 @@ namespace KcpTransport
                         break;
                     default:
                         {
-                            Logger.Error($"[收到数据] conversationId={conversationId}");
                             // Reliable
                             if (conversationId < 100)
                             {
@@ -228,13 +224,7 @@ namespace KcpTransport
                             {
                                 unsafe
                                 {
-                                    //var socketBufferPointer = (byte*)Unsafe.AsPointer(ref e);
-
-                                    var socketBufferPointer = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(e));
-
-                                    //var buffer = new ByteBuffer(e);
-                                    //var id = buffer.ReadUint();
-                                    //Logger.Error($"[收到数据1] id={id}");
+                                    var socketBufferPointer = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(e.AsSpan()));
                                     if (!kcpConnection.InputReceivedKcpBuffer(socketBufferPointer, received)) return;
                                 }
 

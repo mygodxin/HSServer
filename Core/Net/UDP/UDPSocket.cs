@@ -1,3 +1,4 @@
+using KcpTransport.LowLevel;
 using System;
 using System.Collections.Concurrent;
 using System.Net;
@@ -103,7 +104,7 @@ namespace Core.Net.UDP
                 throw new ObjectDisposedException(nameof(UdpSocket));
 
             var tcs = new TaskCompletionSource<(byte[], int)>();
-            var buffer = new byte[65507]; // UDP 最大数据包大小
+            var buffer = new byte[(int)KcpMethods.IKCP_MTU_DEF]; // UDP 最大数据包大小
             EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
 
             _socket.BeginReceiveFrom(buffer, 0, buffer.Length, SocketFlags.None,

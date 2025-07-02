@@ -1,19 +1,21 @@
 using Core.Util;
 using KcpTransport;
 using MessagePack;
+using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Core.Net.KCP
 {
-    public class KCPSocket
+    public class KCPSocket : NetChannel
     {
         private KcpConnection _connect;
         private bool _isRunning;
         private readonly ConcurrentQueue<byte[]> _receiveQueue = new ConcurrentQueue<byte[]>();
-        private readonly BlockingCollection<byte[]> _sendQueue = new BlockingCollection<byte[]>();
+        private readonly ConcurrentQueue<byte[]> _sendQueue = new ConcurrentQueue<byte[]>();
 
         public event Action OnConnected;
         public event Action OnDisconnected;
@@ -28,12 +30,7 @@ namespace Core.Net.KCP
             try
             {
                 _connect = socket;
-
-                _isRunning = true;
-                Thread sendThread = new Thread(SendLoop) { IsBackground = true };
-                sendThread.Start();
-
-                OnConnected?.Invoke();
+                _connect.OnRecive += ReceiveLoop;
             }
             catch (Exception ex)
             {
@@ -45,20 +42,15 @@ namespace Core.Net.KCP
         /// <summary>
         /// use by client
         /// </summary>
-        public KCPSocket(IPEndPoint remoteEndPoint)
+        public KCPSocket(string host, int port)
         {
             try
             {
+                var remoteEndPoint = new IPEndPoint(IPAddress.Parse(host), port);
                 var task = KcpConnection.ConnectAsync(remoteEndPoint, default);
                 task.AsTask().Wait();
                 _connect = task.Result;
-
-                _isRunning = true;
-                _connect.OnRecive += ReceiveLoop;
-                Thread sendThread = new Thread(SendLoop) { IsBackground = true };
-                sendThread.Start();
-
-                OnConnected?.Invoke();
+                _connect.OnRecive += Receive;
             }
             catch (Exception ex)
             {
@@ -66,107 +58,22 @@ namespace Core.Net.KCP
                 Dispose();
             }
         }
-
-        /// <summary>
-        /// 作为服务器接受连接 (在Accept的Socket上使用)
-        /// </summary>
-        public void Start(KcpConnection acceptedSocket)
+        private void Receive(byte[] data)
         {
-            try
-            {
-                _connect = acceptedSocket;
-                _connect.OnRecive += ReceiveLoop;
-                _isRunning = true;
-                Thread sendThread = new Thread(SendLoop) { IsBackground = true };
-                sendThread.Start();
-
-                OnConnected?.Invoke();
-            }
-            catch (Exception ex)
-            {
-                OnError?.Invoke(ex);
-                Dispose();
-            }
+            OnDataReceived?.Invoke(data);
         }
 
         private void ReceiveLoop(byte[] bytes)
         {
-            byte[] buffer = new byte[4096];
-
-            while (_isRunning)
-            {
-                try
-                {
-                    int bytesRead = bytes.Length;
-                    if (bytesRead > 0)
-                    {
-                        _receiveQueue.Enqueue(bytes);
-                    }
-                    else
-                    {
-                        // 连接已关闭
-                        _isRunning = false;
-                        OnDisconnected?.Invoke();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (_isRunning)
-                    {
-                        OnError?.Invoke(ex);
-                        _isRunning = false;
-                        OnDisconnected?.Invoke();
-                    }
-                    break;
-                }
-            }
+            MessageHandle.Read(bytes, this);
         }
 
-        private void SendLoop()
+        public override void Write(Message message)
         {
-            while (_isRunning)
-            {
-                try
-                {
-                    byte[] data = _sendQueue.Take(); // 阻塞直到有数据
-                    _connect.SendReliableBuffer(data);
-                }
-                catch (Exception ex)
-                {
-                    if (_isRunning)
-                    {
-                        OnError?.Invoke(ex);
-                        _isRunning = false;
-                        OnDisconnected?.Invoke();
-                    }
-                    break;
-                }
-            }
-        }
-
-        public void Send(byte[] data)
-        {
+            var data = MessageHandle.Write(message);
             if (data != null && data.Length > 0)
             {
-                _sendQueue.Add(data);
-            }
-        }
-
-        public byte[] Receive()
-        {
-            if (_receiveQueue.TryDequeue(out byte[] data))
-            {
-                return data;
-            }
-            return null;
-        }
-
-        public void Update()
-        {
-            // 在主线程处理接收到的数据
-            while (_receiveQueue.TryDequeue(out byte[] data))
-            {
-                OnDataReceived?.Invoke(data);
+                _connect.SendReliableBuffer(data);
             }
         }
 
@@ -174,14 +81,7 @@ namespace Core.Net.KCP
         {
             _isRunning = false;
 
-            try
-            {
-                _sendQueue?.CompleteAdding();
-                _connect?.Dispose();
-            }
-            catch { /* 忽略关闭时的错误 */ }
-
-            _sendQueue?.Dispose();
+            _sendQueue?.Clear();
             _connect?.Dispose();
         }
     }

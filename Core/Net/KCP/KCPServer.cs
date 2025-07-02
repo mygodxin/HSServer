@@ -1,4 +1,5 @@
 using KcpTransport;
+using Proto;
 using System;
 using System.Net;
 using System.Net.Sockets;
@@ -14,6 +15,10 @@ namespace Core.Net.KCP
         private readonly CancellationTokenSource _cts = new();
         private readonly IPEndPoint _localEndPoint;
 
+        public KcpServer(string host, int port)
+        {
+            _localEndPoint = new IPEndPoint(IPAddress.Parse(host), port);
+        }
         public KcpServer(IPEndPoint localEndPoint)
         {
             _localEndPoint = localEndPoint;
@@ -22,7 +27,6 @@ namespace Core.Net.KCP
         public async Task StartAsync()
         {
             _transport = await KcpListener.ListenAsync(_localEndPoint, _cts.Token);
-
             // 启动接收循环
             _ = Task.Run(ReceiveLoopAsync);
         }
@@ -35,9 +39,9 @@ namespace Core.Net.KCP
                 {
                     var result = _transport.AcceptConnection();
                     if (result == null) continue;
-                    if (result.ConnectionId == 0) continue; // 无效连接
+                    if (result.ConnectionId == 0) continue;
 
-                    var conn = new KCPSocket(result);
+                    var socket = new KCPSocket(result);
                 }
                 catch (OperationCanceledException)
                 {
@@ -48,6 +52,11 @@ namespace Core.Net.KCP
                     Console.WriteLine($"Receive error: {ex}");
                 }
             }
+        }
+
+        private void OnRecive(byte[] bytes)
+        {
+
         }
 
         public void Dispose()
