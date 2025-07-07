@@ -1,5 +1,4 @@
 using Core.Net.KCP;
-using Core.Net.Tcp;
 using KcpTransport.LowLevel;
 using System;
 using System.Collections.Concurrent;
@@ -9,156 +8,140 @@ using System.Threading;
 
 namespace Core.Net.UDP
 {
-    public class UdpSocketServer : ISocketServer
+    using System;
+    using System.Collections.Concurrent;
+    using System.Net;
+    using System.Net.Sockets;
+    using System.Threading;
+    using System.Threading.Tasks;
+
+    public class UdpServer
     {
-        private Socket _udpSocket;
+        private Socket _socket;
+        private ConcurrentQueue<(EndPoint, byte[])> _receiveQueue = new();
+        private ConcurrentQueue<(EndPoint, byte[])> _sendQueue = new();
+        private ConcurrentDictionary<EndPoint, DateTime> _clients = new();
         private CancellationTokenSource _cts;
-        private bool _isRunning;
-        private ConcurrentDictionary<IPEndPoint, DateTime> _activeClients = new ConcurrentDictionary<IPEndPoint, DateTime>();
+        private ReaderWriterLockSlim _clientLock = new(); // 读写锁优化连接字典
+        private int _workerThreads; // 可配置的线程数（8/16）
 
-        public bool IsRunning => _isRunning;
-        public IPEndPoint ServerEndPoint { get; private set; }
-        public Action<IPEndPoint, byte[], int> OnReceivedData;
+        public event Action<EndPoint> OnConnected;
+        public event Action<EndPoint> OnDisconnected;
+        public event Action<EndPoint, byte[]> OnReceived;
 
-        public async Task StartAsync(string host, int port)
+        public UdpServer(int port, int workerThreads = 8)
         {
-            if (_isRunning)
-                throw new InvalidOperationException("Server is already running");
-
-            var ipAddress = IPAddress.Parse(host);
-            ServerEndPoint = new IPEndPoint(ipAddress, port);
+            _workerThreads = workerThreads;
+            _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            _socket.Bind(new IPEndPoint(IPAddress.Any, port));
             _cts = new CancellationTokenSource();
-
-            // 创建UDP Socket
-            _udpSocket = new Socket(ipAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
-
-            // 设置Socket选项
-            _udpSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            _udpSocket.ReceiveTimeout = 0; // 非阻塞模式
-            _udpSocket.SendTimeout = 5000;
-
-            // 绑定到本地端点
-            _udpSocket.Bind(ServerEndPoint);
-
-            _isRunning = true;
-
-            // 开始接收消息
-            _ = Task.Run(() => ReceiveLoopAsync(_cts.Token));
         }
 
-        public async Task StopAsync()
+        public void Start()
         {
-            if (!_isRunning)
-                return;
-
-            _cts?.Cancel();
-
-            try
+            // 1个接收线程 + N个工作线程 + 1个发送线程 + 1个心跳线程
+            Task.Run(ReceiveLoop, _cts.Token);
+            for (int i = 0; i < _workerThreads; i++) // 启动工作线程池
             {
-                if (_udpSocket != null)
-                {
-                    _udpSocket.Close();
-                    _udpSocket.Dispose();
-                }
+                Task.Run(ProcessLoop, _cts.Token);
             }
-            finally
-            {
-                _isRunning = false;
-                _udpSocket = null;
-                _activeClients.Clear();
-            }
+            Task.Run(SendLoop, _cts.Token);
+            Task.Run(HeartbeatCheck, _cts.Token);
         }
 
-        private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
+        private void ReceiveLoop()
         {
-            var buffer = new byte[(int)KcpMethods.IKCP_MTU_DEF]; // UDP最大数据包大小
-            EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
+            byte[] buffer = new byte[8192]; // 扩大缓冲区
+            EndPoint remoteEp = new IPEndPoint(IPAddress.Any, 0);
 
-            while (!cancellationToken.IsCancellationRequested)
+            while (!_cts.IsCancellationRequested)
             {
                 try
                 {
-                    // 异步接收数据
-                    var receiveTask = Task.Factory.FromAsync(
-                        (callback, state) => _udpSocket.BeginReceiveFrom(
-                            buffer, 0, buffer.Length, SocketFlags.None,
-                            ref remoteEP, callback, state),
-                        asyncResult => _udpSocket.EndReceiveFrom(asyncResult, ref remoteEP),
-                        null);
+                    int bytesRead = _socket.ReceiveFrom(buffer, ref remoteEp);
+                    byte[] data = new byte[bytesRead];
+                    Buffer.BlockCopy(buffer, 0, data, 0, bytesRead);
+                    _receiveQueue.Enqueue((remoteEp, data)); // 入队待处理
+                }
+                catch (SocketException ex) when (ex.SocketErrorCode == SocketError.Interrupted)
+                {
+                    break; // 安全退出
+                }
+            }
+        }
 
-                    var timeoutTask = Task.Delay(Timeout.Infinite, cancellationToken);
-                    var completedTask = await Task.WhenAny(receiveTask, timeoutTask);
+        private void ProcessLoop()
+        {
+            while (!_cts.IsCancellationRequested)
+            {
+                if (_receiveQueue.TryDequeue(out var packet))
+                {
+                    var (remoteEp, data) = packet;
+                    bool isNew = false;
 
-                    if (completedTask == receiveTask)
+                    // 读写锁保护连接字典[9,10](@ref)
+                    _clientLock.EnterUpgradeableReadLock();
+                    try
                     {
-                        int bytesReceived = await receiveTask;
-                        var clientEP = (IPEndPoint)remoteEP;
-
-                        // 更新活跃客户端列表
-                        _activeClients[clientEP] = DateTime.UtcNow;
-
-                        // 处理接收到的数据
-                        if (bytesReceived > 0)
+                        if (!_clients.ContainsKey(remoteEp))
                         {
-                            OnDataReceived(clientEP, buffer, bytesReceived);
+                            _clientLock.EnterWriteLock();
+                            _clients[remoteEp] = DateTime.Now;
+                            isNew = true;
+                        }
+                        else
+                        {
+                            _clients[remoteEp] = DateTime.Now; // 更新活跃时间
                         }
                     }
+                    finally
+                    {
+                        if (_clientLock.IsWriteLockHeld) _clientLock.ExitWriteLock();
+                        _clientLock.ExitUpgradeableReadLock();
+                    }
+
+                    if (isNew) OnConnected?.Invoke(remoteEp);
+                    OnReceived?.Invoke(remoteEp, data);
                 }
-                catch (ObjectDisposedException)
+                else
                 {
-                    // Socket已关闭
-                    break;
+                    Thread.Sleep(1); // 避免CPU空转
                 }
-                catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted)
+            }
+        }
+
+        private void SendLoop()
+        {
+            while (!_cts.IsCancellationRequested)
+            {
+                if (_sendQueue.TryDequeue(out var packet))
                 {
-                    // 操作被取消
-                    break;
+                    var (remoteEp, data) = packet;
+                    _socket.SendTo(data, remoteEp);
                 }
-                catch (Exception ex)
+                Thread.Sleep(1);
+            }
+        }
+
+        private void HeartbeatCheck()
+        {
+            while (!_cts.IsCancellationRequested)
+            {
+                foreach (var client in _clients)
                 {
-                    Console.WriteLine($"UDP receive error: {ex.Message}");
-                    await Task.Delay(1000); // 防止错误循环
+                    if ((DateTime.Now - client.Value).TotalSeconds > 30)
+                    {
+                        OnDisconnected?.Invoke(client.Key);
+                        _clients.TryRemove(client.Key, out _);
+                    }
                 }
+                Thread.Sleep(5000); // 每5秒检测一次
             }
         }
 
-        protected virtual void OnDataReceived(IPEndPoint clientEP, byte[] data, int len)
-        {
-            // 可由子类重写处理具体数据
-            //Console.WriteLine($"Received {data.Length} bytes from {clientEP}");
-            OnReceivedData?.Invoke(clientEP, data, len);
-        }
+        public void Send(EndPoint endPoint, byte[] data) =>
+            _sendQueue.Enqueue((endPoint, data));
 
-        // 向特定客户端发送消息
-        public async Task SendToAsync(IPEndPoint clientEP, byte[] data)
-        {
-            if (!_isRunning)
-                throw new InvalidOperationException("Server is not running");
-
-            try
-            {
-                int bytesSent = await Task.Factory.FromAsync(
-                    (callback, state) => _udpSocket.BeginSendTo(
-                        data, 0, data.Length, SocketFlags.None,
-                        clientEP, callback, state),
-                    _udpSocket.EndSendTo,
-                    null);
-
-                Console.WriteLine($"Sent {bytesSent} bytes to {clientEP}");
-            }
-            catch (SocketException ex)
-            {
-                Console.WriteLine($"Failed to send to {clientEP}: {ex.SocketErrorCode}");
-            }
-        }
-
-        // 广播消息给所有已知客户端
-        public async Task BroadcastAsync(byte[] data)
-        {
-            foreach (var clientEP in _activeClients.Keys.ToArray())
-            {
-                await SendToAsync(clientEP, data);
-            }
-        }
+        public void Stop() => _cts?.Cancel();
     }
 }

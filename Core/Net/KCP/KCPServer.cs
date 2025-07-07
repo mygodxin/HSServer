@@ -1,3 +1,4 @@
+using Core.Util;
 using KcpTransport;
 using Proto;
 using System;
@@ -33,15 +34,21 @@ namespace Core.Net.KCP
 
         private async Task ReceiveLoopAsync()
         {
+            var buffer = new byte[1024];
             while (!_cts.IsCancellationRequested)
             {
                 try
                 {
-                    var result = _transport.AcceptConnection();
+                    var result = await _transport.AcceptConnectionAsync();
                     if (result == null) continue;
                     if (result.ConnectionId == 0) continue;
 
                     var socket = new KCPSocket(result);
+                    socket.OnDataReceived += (buffer) =>
+                    {
+                        OnReceiveData(buffer, socket);
+                    };
+                    socket.AddLister();
                 }
                 catch (OperationCanceledException)
                 {
@@ -54,16 +61,16 @@ namespace Core.Net.KCP
             }
         }
 
-        private void OnRecive(byte[] bytes)
-        {
-
-        }
-
         public void Dispose()
         {
             _cts.Cancel();
             _transport.Dispose();
             GC.SuppressFinalize(this);
+        }
+
+        private void OnReceiveData(byte[] buffer, NetChannel channel)
+        {
+            MessageHandle.Read(buffer, channel);
         }
     }
 }

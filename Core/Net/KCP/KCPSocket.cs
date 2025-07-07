@@ -5,8 +5,6 @@ using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Concurrent;
 using System.Net;
-using System.Net.Sockets;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Core.Net.KCP
 {
@@ -22,50 +20,23 @@ namespace Core.Net.KCP
         public event Action<byte[]> OnDataReceived;
         public event Action<Exception> OnError;
 
-        /// <summary>
-        /// use by server
-        /// </summary>
-        public KCPSocket(KcpConnection socket)
+        public KCPSocket(KcpConnection connect)
         {
-            try
-            {
-                _connect = socket;
-                _connect.OnRecive += ReceiveLoop;
-            }
-            catch (Exception ex)
-            {
-                OnError?.Invoke(ex);
-                Dispose();
-            }
+            _connect = connect;
+        }
+        public KCPSocket()
+        {
         }
 
-        /// <summary>
-        /// use by client
-        /// </summary>
-        public KCPSocket(string host, int port)
+        public void AddLister()
         {
-            try
-            {
-                var remoteEndPoint = new IPEndPoint(IPAddress.Parse(host), port);
-                var task = KcpConnection.ConnectAsync(remoteEndPoint, default);
-                task.AsTask().Wait();
-                _connect = task.Result;
-                _connect.OnRecive += Receive;
-            }
-            catch (Exception ex)
-            {
-                OnError?.Invoke(ex);
-                Dispose();
-            }
-        }
-        private void Receive(byte[] data)
-        {
-            OnDataReceived?.Invoke(data);
+            _connect.OnReceiveData += OnDataReceived;
         }
 
-        private void ReceiveLoop(byte[] bytes)
+        public async ValueTask<KcpConnection> ConnectAsync(string host, int port)
         {
-            MessageHandle.Read(bytes, this);
+            _connect = await KcpConnection.ConnectAsync(new IPEndPoint(IPAddress.Parse(host), port));
+            return _connect;
         }
 
         public override void Write(Message message)

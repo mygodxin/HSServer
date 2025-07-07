@@ -4,13 +4,10 @@ using System.Net;
 
 namespace Core.Net
 {
-    public interface ISocket
+    public interface IClient
     {
-        Task ConnectAsync(string host, int port);
-        Task DisconnectAsync();
-        Task<int> SendAsync(byte[] data);
-        //Task<(byte[], int)> ReceiveAsync();
-        //Task<(byte[], int)> ReceiveAsync(int timeout);
-        bool IsConnected { get; }
+        void OnConnected();
+        void OnDisconnected();
+        void OnReceived(byte[] data);
     }
 }

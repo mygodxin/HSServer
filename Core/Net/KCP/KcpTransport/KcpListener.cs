@@ -1,11 +1,5 @@
-using Core;
-//using Luban;
-using Core.Net;
-using Core.Net.UDP;
 using KcpTransport.LowLevel;
-using Microsoft.Extensions.Options;
 using System;
-using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,6 +7,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 
 namespace KcpTransport
 {
@@ -36,29 +31,58 @@ namespace KcpTransport
 
     public delegate ReadOnlySpan<byte> HashFunc();
 
-    public sealed class KcpListener : IDisposable, IAsyncDisposable
+    public sealed class KcpListenerOptions : KcpOptions
     {
-        static readonly byte[] DefaultRandomHashKey = new byte[32];
+        //static readonly byte[] DefaultRandomHashKey = new byte[32];
 
         public IPEndPoint ListenEndPoint { get; set; }
         public TimeSpan UpdatePeriod { get; set; } = TimeSpan.FromMilliseconds(5);
         public int EventLoopCount { get; set; } = Math.Max(1, Environment.ProcessorCount / 2);
         public bool ConfigureAwait { get; set; } = false;
-        public TimeSpan KeepAliveDelay { get; set; } = TimeSpan.FromSeconds(2000000000d);
+        public TimeSpan KeepAliveDelay { get; set; } = TimeSpan.FromSeconds(20);
         public TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromMinutes(1);
         public TimeSpan HandshakeTimeout { get; set; } = TimeSpan.FromSeconds(30);
         public HashFunc Handshake32bitHashKeyGenerator { get; set; } = KeyGenerator;
+        public Action<Socket, KcpListenerOptions, ListenerSocketType>? ConfigureSocket { get; set; }
 
         static ReadOnlySpan<byte> KeyGenerator() => DefaultRandomHashKey;
 
-        UdpSocketServer socket;
-        Random random = new Random();
+        private static byte[] _defaultRandomHashKey;
+        private static readonly object _lock = new object();
+        public static byte[] DefaultRandomHashKey
+        {
+            get
+            {
+                if (_defaultRandomHashKey == null)
+                {
+                    lock (_lock)
+                    {
+                        if (_defaultRandomHashKey == null)
+                        {
+                            byte[] buffer = new byte[32];
+                            using (var rng = new RNGCryptoServiceProvider())
+                            {
+                                rng.GetBytes(buffer);
+                            }
+                            _defaultRandomHashKey = buffer;
+                        }
+                    }
+                }
+                return _defaultRandomHashKey;
+            }
+        }
+    }
+
+    public sealed class KcpListener : IDisposable, IAsyncDisposable
+    {
+        Socket socket;
         ConcurrentQueue<KcpConnection> acceptQueue;
         bool isDisposed;
-        ConcurrentDictionary<uint, KcpConnection> connections = new ConcurrentDictionary<uint, KcpConnection>();
+        ConcurrentDictionary<uint, KcpConnection> connections = new();
 
         Task[] socketEventLoopTasks;
         Thread updateConnectionsWorkerThread;
+        CancellationTokenSource listenerCancellationTokenSource = new();
 
         public static ValueTask<KcpListener> ListenAsync(string host, int port, CancellationToken cancellationToken = default)
         {
@@ -67,15 +91,58 @@ namespace KcpTransport
 
         public static ValueTask<KcpListener> ListenAsync(IPEndPoint listenEndPoint, CancellationToken cancellationToken = default)
         {
-            return new ValueTask<KcpListener>(new KcpListener(listenEndPoint));
+            return ListenAsync(new KcpListenerOptions { ListenEndPoint = listenEndPoint }, cancellationToken);
         }
-        KcpListener(IPEndPoint ipEndpoint)
+
+        public static ValueTask<KcpListener> ListenAsync(KcpListenerOptions options, CancellationToken cancellationToken = default)
         {
-            var socket = new UdpSocketServer();
-            socket.StartAsync(ipEndpoint.Address.ToString(), ipEndpoint.Port);
-            socket.OnReceivedData += OnReceivedData;
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // sync but for future extensibility.
+            return new ValueTask<KcpListener>(new KcpListener(options));
+        }
+
+        KcpListener(KcpListenerOptions options)
+        {
+            Socket socket = new Socket(options.ListenEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            socket.Blocking = false;
+            socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true); // in Linux, as SO_REUSEPORT
+
+            // http://handyresearcher.blog.fc2.com/blog-entry-18.html
+            // https://stackoverflow.com/questions/7201862/an-existing-connection-was-forcibly-closed-by-the-remote-host/7478498
+            // https://stackoverflow.com/questions/34242622/windows-udp-sockets-recvfrom-fails-with-error-10054
+            // https://stackoverflow.com/questions/74327225/why-does-sending-via-a-udpclient-cause-subsequent-receiving-to-fail
+
+            if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+      System.Runtime.InteropServices.OSPlatform.Windows))
+            {
+                const uint IOC_IN = 0x80000000U;
+                const uint IOC_VENDOR = 0x18000000U;
+                const uint SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
+                socket.IOControl(unchecked((int)SIO_UDP_CONNRESET), new byte[] { 0x00, 0x00, 0x00, 0x00 }, null);
+            }
+
+            options.ConfigureSocket?.Invoke(socket, options, ListenerSocketType.Receive);
+
+            var endPoint = options.ListenEndPoint;
+            try
+            {
+                socket.Bind(endPoint);
+            }
+            catch
+            {
+                socket.Dispose();
+                throw;
+            }
+
             this.socket = socket;
             this.acceptQueue = new ConcurrentQueue<KcpConnection>();
+
+            this.socketEventLoopTasks = new Task[options.EventLoopCount];
+            for (int i = 0; i < socketEventLoopTasks.Length; i++)
+            {
+                socketEventLoopTasks[i] = this.StartSocketEventLoopAsync(options, i);
+            }
 
             updateConnectionsWorkerThread = new Thread(RunUpdateKcpConnectionLoop)
             {
@@ -83,203 +150,214 @@ namespace KcpTransport
                 IsBackground = true,
                 Priority = ThreadPriority.AboveNormal,
             };
-            updateConnectionsWorkerThread.Start();
+            updateConnectionsWorkerThread.Start(options);
         }
 
-        public KcpConnection AcceptConnection()
+        public ValueTask<KcpConnection> AcceptConnectionAsync(CancellationToken cancellationToken = default)
         {
-            if (isDisposed)
-                throw new System.ObjectDisposedException(nameof(KcpConnection));
-
-            // 先检查队列中是否已有可用连接
-            if (acceptQueue.TryDequeue(out var connection))
-            {
-                return connection;
-            }
-            return null;
+            // 同步完成：队列中有可用连接
+            acceptQueue.TryDequeue(out var connection);
+            return new ValueTask<KcpConnection>(connection); // 包装 Task
         }
 
-        private void OnReceivedData(IPEndPoint RemoteEndPoint, byte[] e, int len)
+        async Task StartSocketEventLoopAsync(KcpListenerOptions options, int id)
         {
+            // await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding);
 
-            try
+            var remoteEndPoint = options.ListenEndPoint;
+            var random = new Random();
+            var cancellationToken = this.listenerCancellationTokenSource.Token;
+
+            var socketBuffer = new byte[options.MaximumTransmissionUnit];
+
+            while (!cancellationToken.IsCancellationRequested)
             {
-                var socketBuffer = new ByteBuffer(e);
-
-                var receivedAddress = RemoteEndPoint;
-
-                var received = len;
-
-                var conversationId = socketBuffer.ReadUint();
-                var packetType = (PacketType)conversationId;
-                switch (packetType)
+                try
                 {
-                    case PacketType.HandshakeInitialRequest:
-                    ISSUE_CONVERSATION_ID:
-                        {
-                            conversationId = (uint)random.Next(100, int.MaxValue);
-                            if (connections.ContainsKey(conversationId))
+                    // Socket is datagram so received data contains full block
+                    var result = await socket.ReceiveFromAsync(socketBuffer, SocketFlags.None, remoteEndPoint);
+                    var received = result.ReceivedBytes;
+                    remoteEndPoint = (IPEndPoint)result.RemoteEndPoint;
+                    // first 4 byte is conversationId or extra packet type
+                    var conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(0, received));
+                    var packetType = (PacketType)conversationId;
+                    switch (packetType)
+                    {
+                        case PacketType.HandshakeInitialRequest:
+                        ISSUE_CONVERSATION_ID:
                             {
-                                goto ISSUE_CONVERSATION_ID;
-                            }
-
-                            var (cookie, timestamp) = SynCookie.Generate(DefaultRandomHashKey, receivedAddress);
-                            SendHandshakeInitialResponse(socket, receivedAddress, conversationId, cookie, timestamp);
-                        }
-                        break;
-                    case PacketType.HandshakeOkRequest:
-                        {
-                            conversationId = socketBuffer.ReadUint();
-                            var cookie = socketBuffer.ReadUint();
-                            var timestamp = socketBuffer.ReadLong();
-                            if (!SynCookie.Validate(DefaultRandomHashKey, HandshakeTimeout, cookie, receivedAddress, timestamp))
-                            {
-                                SendHandshakeNgResponse(socket, receivedAddress);
-                                break;
-                            }
-
-                            if (!connections.TryAdd(conversationId, null))
-                            {
-                                // can't added, client should retry
-                                SendHandshakeNgResponse(socket, receivedAddress);
-                                break;
-                            }
-
-                            // create new connection
-                            var kcpConnection = new KcpConnection(conversationId, receivedAddress);
-                            connections[conversationId] = kcpConnection;
-                            acceptQueue.Enqueue(kcpConnection);
-                            SendHandshakeOkResponse(socket, receivedAddress);
-
-                        }
-                        break;
-                    case PacketType.Ping:
-                        {
-                            conversationId = socketBuffer.ReadUint();
-                            if (!connections.TryGetValue(conversationId, out var kcpConnection))
-                            {
-                                // may incoming old packet, TODO: log it.
-                                return;
-                            }
-
-                            kcpConnection.PingReceived();
-                        }
-                        break;
-                    case PacketType.Pong:
-                        {
-                            conversationId = socketBuffer.ReadUint();
-                            if (!connections.TryGetValue(conversationId, out var kcpConnection))
-                            {
-                                // may incoming old packet, TODO: log it.
-                                return;
-                            }
-
-                            kcpConnection.PongReceived();
-                        }
-                        break;
-                    case PacketType.Disconnect:
-                        {
-                            conversationId = socketBuffer.ReadUint();
-                            if (!connections.TryRemove(conversationId, out var kcpConnection))
-                            {
-                                // may incoming old packet, TODO: log it.
-                                return;
-                            }
-
-                            kcpConnection.Disconnect();
-                            kcpConnection.Dispose();
-                        }
-                        break;
-                    case PacketType.Unreliable:
-                        {
-                            conversationId = socketBuffer.ReadUint();
-                            if (!connections.TryGetValue(conversationId, out var kcpConnection))
-                            {
-                                // may incoming old packet, TODO: log it.
-                                return;
-                            }
-
-
-                            lock (kcpConnection.SyncRoot)
-                            {
-                                kcpConnection.InputReceivedUnreliableBuffer(socketBuffer.ReadBytes());
-                            }
-                        }
-                        break;
-                    default:
-                        {
-                            // Reliable
-                            if (conversationId < 100)
-                            {
-                                // may incoming invalid packet, TODO: log it.
-                                return;
-                            }
-                            if (!connections.TryGetValue(conversationId, out var kcpConnection))
-                            {
-                                // may incoming old packet, TODO: log it.
-                                return;
-                            }
-
-                            lock (kcpConnection.SyncRoot)
-                            {
-                                unsafe
+                                conversationId = unchecked((uint)random.Next(100, int.MaxValue)); // 0~99 is reserved
+                                if (connections.ContainsKey(conversationId))
                                 {
-                                    var socketBufferPointer = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(e.AsSpan()));
-                                    if (!kcpConnection.InputReceivedKcpBuffer(socketBufferPointer, received)) return;
+                                    goto ISSUE_CONVERSATION_ID;
                                 }
 
-                                kcpConnection.ConsumeKcpFragments(receivedAddress);
+                                // send tentative id and cookie to avoid syn-flood(don't allocate memory in this phase)
+                                var (cookie, timestamp) = SynCookie.Generate(options.Handshake32bitHashKeyGenerator(), remoteEndPoint);
+
+                                SendHandshakeInitialResponse(socket, remoteEndPoint, conversationId, cookie, timestamp);
                             }
-                        }
-                        break;
+                            break;
+                        case PacketType.HandshakeOkRequest:
+                            {
+                                conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
+                                var cookie = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(8, received - 8));
+                                var timestamp = MemoryMarshal.Read<long>(socketBuffer.AsSpan(12, received - 12));
+
+                                if (!SynCookie.Validate(options.Handshake32bitHashKeyGenerator(), options.HandshakeTimeout, cookie, remoteEndPoint, timestamp))
+                                {
+                                    SendHandshakeNgResponse(socket, remoteEndPoint);
+                                    break;
+                                }
+
+                                if (!connections.TryAdd(conversationId, null!))
+                                {
+                                    // can't added, client should retry
+                                    SendHandshakeNgResponse(socket, remoteEndPoint);
+                                    break;
+                                }
+
+                                // create new connection
+                                var kcpConnection = new KcpConnection(conversationId, options, remoteEndPoint);
+                                connections[conversationId] = kcpConnection;
+                                acceptQueue.Enqueue(kcpConnection);
+                                SendHandshakeOkResponse(socket, remoteEndPoint);
+                            }
+                            break;
+                        case PacketType.Ping:
+                            {
+                                conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
+                                if (!connections.TryGetValue(conversationId, out var kcpConnection))
+                                {
+                                    // may incoming old packet, TODO: log it.
+                                    continue;
+                                }
+
+                                kcpConnection.PingReceived();
+                            }
+                            break;
+                        case PacketType.Pong:
+                            {
+                                conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
+                                if (!connections.TryGetValue(conversationId, out var kcpConnection))
+                                {
+                                    // may incoming old packet, TODO: log it.
+                                    continue;
+                                }
+
+                                kcpConnection.PongReceived();
+                            }
+                            break;
+                        case PacketType.Disconnect:
+                            {
+                                conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
+                                if (!connections.TryRemove(conversationId, out var kcpConnection))
+                                {
+                                    // may incoming old packet, TODO: log it.
+                                    continue;
+                                }
+
+                                kcpConnection.Disconnect();
+                                kcpConnection.Dispose();
+                            }
+                            break;
+                        case PacketType.Unreliable:
+                            {
+                                conversationId = MemoryMarshal.Read<uint>(socketBuffer.AsSpan(4, received - 4));
+                                if (!connections.TryGetValue(conversationId, out var kcpConnection))
+                                {
+                                    // may incoming old packet, TODO: log it.
+                                    continue;
+                                }
+
+
+                                // This loop is sometimes called in multithread so needs lock per connection.
+                                lock (kcpConnection.SyncRoot)
+                                {
+                                    kcpConnection.InputReceivedUnreliableBuffer(socketBuffer.AsSpan(8, received - 8));
+                                }
+                            }
+                            break;
+                        default:
+                            {
+                                // Reliable
+                                if (conversationId < 100)
+                                {
+                                    // may incoming invalid packet, TODO: log it.
+                                    continue;
+                                }
+                                if (!connections.TryGetValue(conversationId, out var kcpConnection))
+                                {
+                                    // may incoming old packet, TODO: log it.
+                                    continue;
+                                }
+                                Console.WriteLine($"[server] conversationId={conversationId}, len={socketBuffer.Length}");
+                                lock (kcpConnection.SyncRoot)
+                                {
+                                    unsafe
+                                    {
+                                        var socketBufferPointer = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(socketBuffer.AsSpan()));
+                                        if (!kcpConnection.InputReceivedKcpBuffer(socketBufferPointer, received)) continue;
+                                    }
+
+                                    kcpConnection.ConsumeKcpFragments(remoteEndPoint, cancellationToken);
+                                }
+                            }
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // TODO: log?
+                    _ = ex;
                 }
             }
-            catch (Exception ex)
+
+            static void SendHandshakeInitialResponse(Socket socket, IPEndPoint clientAddress, uint conversationId, uint cookie, long timestamp)
             {
-                Logger.Error(ex.ToString());
+                byte[] data = new byte[20];
+                Buffer.BlockCopy(BitConverter.GetBytes((uint)PacketType.HandshakeInitialResponse), 0, data, 0, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(conversationId), 0, data, 4, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(cookie), 0, data, 8, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(timestamp), 0, data, 12, 8);
+
+                socket.SendTo(data, SocketFlags.None, clientAddress);
+            }
+
+            static void SendHandshakeOkResponse(Socket socket, IPEndPoint clientAddress)
+            {
+                var data = new byte[4];
+                MemoryMarshal.Write(data, ref Unsafe.AsRef((uint)PacketType.HandshakeOkResponse));
+                socket.SendTo(data, SocketFlags.None, clientAddress);
+            }
+
+            static void SendHandshakeNgResponse(Socket socket, IPEndPoint clientAddress)
+            {
+                var data = new byte[4];
+                MemoryMarshal.Write(data, ref Unsafe.AsRef((uint)PacketType.HandshakeNgResponse));
+                socket.SendTo(data, SocketFlags.None, clientAddress);
             }
         }
 
-        static void SendHandshakeInitialResponse(UdpSocketServer socket, IPEndPoint clientAddress, uint conversationId, uint cookie, long timestamp)
-        {
-            var data = new ByteBuffer(20); // type(4) + conv(4) + cookie(4) + timestamp(8)
-            data.WriteUint((uint)PacketType.HandshakeInitialResponse);
-            data.WriteUint(conversationId);
-            data.WriteUint(cookie);
-            data.WriteLong(timestamp);
-
-            socket.SendToAsync(clientAddress, data.Bytes);
-        }
-
-        static void SendHandshakeOkResponse(UdpSocketServer socket, IPEndPoint clientAddress)
-        {
-            var data = new ByteBuffer(4);
-            data.WriteUint((uint)PacketType.HandshakeOkResponse);
-            socket.SendToAsync(clientAddress, data.Bytes);
-        }
-
-        static void SendHandshakeNgResponse(UdpSocketServer socket, IPEndPoint clientAddress)
-        {
-            var data = new ByteBuffer(4);
-            data.WriteUint((uint)PacketType.HandshakeNgResponse);
-            socket.SendToAsync(clientAddress, data.Bytes);
-        }
-
-        void RunUpdateKcpConnectionLoop(object state)
+        void RunUpdateKcpConnectionLoop(object? state)
         {
             // NOTE: should use ikcp_check? https://github.com/skywind3000/kcp/wiki/EN_KCP-Best-Practice#advance-update
 
             // All Windows(.NET) Timer and Sleep is low-resolution(min is 16ms).
             // We use custom high-resolution timer instead.
 
-            var period = UpdatePeriod;
-            var timeout = ConnectionTimeout;
+            var cancellationToken = listenerCancellationTokenSource.Token;
+            var options = (KcpListenerOptions)state!;
+            var period = options.UpdatePeriod;
+            var timeout = options.ConnectionTimeout;
             var waitTime = (int)period.TotalMilliseconds;
 
             var removeConnection = new List<uint>();
             while (true)
             {
                 Thread.Sleep(waitTime);
+
+                if (cancellationToken.IsCancellationRequested) break;
 
                 var currentTimestamp = Stopwatch.GetTimestamp();
                 foreach (var kvp in connections)
@@ -325,7 +403,11 @@ namespace KcpTransport
             if (isDisposed) return;
             isDisposed = true;
 
-            acceptQueue = null;
+            acceptQueue.Clear();
+
+            // loop will stop
+            listenerCancellationTokenSource.Cancel();
+            listenerCancellationTokenSource.Dispose();
 
             // wait loop complete
             try
@@ -346,12 +428,8 @@ namespace KcpTransport
                 }
             }
             connections.Clear();
-            socket.StopAsync();
-        }
 
-        ValueTask IAsyncDisposable.DisposeAsync()
-        {
-            throw new NotImplementedException();
+            socket.Dispose();
         }
     }
 }
