@@ -15,7 +15,7 @@ namespace Hotfix
             var channel = Channel;
             if (string.IsNullOrEmpty(account))
             {
-                channel.WriteError("账号不能为空");
+                channel.SendError("账号不能为空");
                 return;
             }
             //Logger.Info($"[server] account={account}");
@@ -24,7 +24,7 @@ namespace Hotfix
             //session.LoginTime = DateTime.UtcNow;
             //session.Channel = channel;
             reqLogin.Account = reqLogin.Account + "1";
-            channel.Write(reqLogin);
+            channel.Send(reqLogin);
         }
         public void OnLogin()
         {

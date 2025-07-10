@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace Core
 {
     /// <summary>
@@ -5,25 +7,27 @@ namespace Core
     /// </summary>
     public class NetChannel
     {
-        public string RemoteAddress { get; set; }
-        protected CancellationTokenSource cancel = new CancellationTokenSource();
+        public IPEndPoint RemoteAddress { get; set; }
+        protected readonly int MAX_MESSAGE_LEN = 1400;
 
-        public virtual Task StartAsync()
+        public virtual Task ConnectAsync()
         {
             return Task.CompletedTask;
         }
+
         public virtual Task DisconnectAsync()
         {
             return Task.CompletedTask;
         }
-        public virtual void Write(Message message)
-        {
 
+        public virtual Task SendAsync(Message message)
+        {
+            return Task.CompletedTask;
         }
 
-        public virtual void WriteError(string error)
+        public virtual Task SendErrorAsync(string error)
         {
-
+            return Task.CompletedTask;
         }
     }
 }

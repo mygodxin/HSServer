@@ -11,6 +11,7 @@ namespace Core
     {
     }
 
+    [MessagePackObject(true)]
     public class MessageError : Message
     {
         public string Error;

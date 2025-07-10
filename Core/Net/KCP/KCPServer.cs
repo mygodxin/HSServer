@@ -43,12 +43,11 @@ namespace Core.Net.KCP
                     if (result == null) continue;
                     if (result.ConnectionId == 0) continue;
 
-                    var socket = new KCPSocket(result);
-                    socket.OnDataReceived += (buffer) =>
+                    KcpChannel socket = new KcpChannel(result);
+                    socket.SetListener((data) =>
                     {
-                        OnReceiveData(buffer, socket);
-                    };
-                    socket.AddLister();
+                        OnReceiveData(data, socket);
+                    });
                 }
                 catch (OperationCanceledException)
                 {

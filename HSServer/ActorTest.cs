@@ -24,7 +24,7 @@ namespace HSServer
 
                         var props2 = Props.FromProducer(() => new TestActor1());
                         var pid2 = context.Spawn(props2);
-                        //context.Send(pid2, "NIHAO");
+                        //context.Write(pid2, "NIHAO");
                         var response = await context.RequestAsync<string>(pid2, "NIHAO");
                         Console.WriteLine(response);
                     }
@@ -50,7 +50,7 @@ namespace HSServer
                         Console.WriteLine($"收到消息1: {msg}self: {context.Self} sender:{context.Sender}");
 
                         context.Respond("OK1");
-                        //context.Send(context.Sender, "NIHAO2");
+                        //context.Write(context.Sender, "NIHAO2");
                         //context.
 
                     }

@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 
 namespace KcpTransport
 {
-    public static class TimeMeasurement
+    public static class TimeExtension
     {
         public static TimeSpan GetElapsedTime(long startTimestamp)
         {
@@ -39,7 +39,7 @@ namespace KcpTransport
                 return false;
             }
 
-            var elapsed = TimeMeasurement.GetElapsedTime(timestamp);
+            var elapsed = TimeExtension.GetElapsedTime(timestamp);
             if (elapsed < timeout)
             {
                 return true;

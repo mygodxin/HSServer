@@ -37,7 +37,7 @@ namespace GateServer
         private static async void InitListener()
         {
             //_ws = new WSServer();
-            //await _ws.StartAsync("http://127.0.0.1:3000");
+            //await _ws.ConnectAsync("http://127.0.0.1:3000");
         }
 
         public static async Task StopAsync()

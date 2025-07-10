@@ -27,7 +27,7 @@ namespace GateServer
 
                 case byte[] gameData: // 从 GameServer 返回的响应
                                       // 发送回客户端（伪代码）
-                                      // clientSocket.Send(gameData);
+                                      // clientSocket.Write(gameData);
                     break;
             }
         }

@@ -1,7 +1,6 @@
 using KcpTransport.LowLevel;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -291,7 +290,7 @@ namespace KcpTransport
                                     // may incoming old packet, TODO: log it.
                                     continue;
                                 }
-                                Console.WriteLine($"[server] conversationId={conversationId}, len={socketBuffer.Length}");
+
                                 lock (kcpConnection.SyncRoot)
                                 {
                                     unsafe

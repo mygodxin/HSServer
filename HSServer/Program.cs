@@ -111,13 +111,9 @@ namespace HSServer
             var server = new KcpServer("127.0.0.1", 5000);
             await server.StartAsync();
             Logger.Info("服务器启动成功");
-            var client = new KCPSocket();
-            var c = await client.ConnectAsync("127.0.0.1", 5000);
-            var time = Stopwatch.GetTimestamp();
-            Logger.Warn($"[kcp]开始发送:{time}");
-            //var times = 0;
-            var buffer = new byte[1024];
-            c.OnReceiveData += (buffer) =>
+            var client = new KcpChannel("127.0.0.1", 5000);
+            await client.ConnectAsync();
+            client.SetListener((buffer) =>
             {
                 var buf = new ByteBuffer(buffer);
                 int msgLen = buf.ReadInt();
@@ -125,7 +121,9 @@ namespace HSServer
                 ReadOnlyMemory<byte> data = buf.ReadBytes();
                 var message = (ReqLogin)HSerializer.Deserialize<Message>(data);
                 Logger.Info($"[Client Recive] " + message.Account);
-            };
+            });
+            var time = Stopwatch.GetTimestamp();
+            Logger.Warn($"[kcp]开始发送:{time}");
 
             while (true)
             {
@@ -136,7 +134,7 @@ namespace HSServer
                     login.Account = input;
                     login.Password = "123456";
                     login.Platform = "taptap";
-                    client.Write(login);
+                    client.Send(login);
                 }
             }
             //while (true)

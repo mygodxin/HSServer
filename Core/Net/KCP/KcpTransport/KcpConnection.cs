@@ -1,16 +1,14 @@
 #pragma warning disable CS8500
 
+using Core;
 using KcpTransport.LowLevel;
 using System;
 using System.Buffers;
 using System.Diagnostics;
-//using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
 using static KcpTransport.LowLevel.KcpMethods;
 
 namespace KcpTransport
@@ -34,7 +32,8 @@ namespace KcpTransport
     // KcpConnections is both used for server and client
     public class KcpConnection : IDisposable
     {
-        public Action<byte[]> OnReceiveData;
+        public Action<byte[]> OnMessage;
+        private byte[] _receiveBuffer = new byte[(int)KcpMethods.IKCP_MTU_DEF];
 
         static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(5);
 
@@ -95,7 +94,7 @@ namespace KcpTransport
 
             this.remoteAddress = remoteAddress;
 
-            // bind same port and connect client IP, this socket is used only for Send
+            // bind same port and connect client IP, this socket is used only for Write
             this.socket = new Socket(remoteAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
             this.socket.Blocking = false;
             this.socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
@@ -277,17 +276,26 @@ namespace KcpTransport
                         // TODO: shutdown existing socket and create new one?
                     }
 
-                    var buffer = ArrayPool<byte>.Shared.Rent(size);
-
-                    fixed (byte* p = buffer)
+                    var buffer = ArrayPool<byte>.Shared.Rent(size);//_receiveBuffer.AsSpan(0, size);
+                    try
                     {
-                        var len = ikcp_recv(kcp, p, buffer.Length);
-                        if (len > 0)
+                        fixed (byte* p = buffer)
                         {
-                            OnReceiveData?.Invoke(buffer);
+                            var len = ikcp_recv(kcp, p, buffer.Length);
+                            if (len > 0)
+                            {
+                                OnMessage?.Invoke(buffer);
+                            }
                         }
                     }
-                    ArrayPool<byte>.Shared.Return(buffer);
+                    catch (Exception e)
+                    {
+                        Logger.Error(e.ToString());
+                    }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(buffer);
+                    }
                 }
             }
         }
@@ -350,7 +358,7 @@ namespace KcpTransport
 
         internal unsafe void UpdateKcp()
         {
-            var elapsed = TimeMeasurement.GetElapsedTime(startingTimestamp);
+            var elapsed = TimeExtension.GetElapsedTime(startingTimestamp);
             var currentTimestampMilliseconds = (uint)elapsed.TotalMilliseconds;
             lock (gate)
             {
@@ -371,7 +379,7 @@ namespace KcpTransport
                 return false;
             }
 
-            var elapsed = TimeMeasurement.GetElapsedTime(lastReceivedTimestamp, currentTimestamp);
+            var elapsed = TimeExtension.GetElapsedTime(lastReceivedTimestamp, currentTimestamp);
             if (elapsed < timeout)
             {
                 return true;
@@ -384,11 +392,11 @@ namespace KcpTransport
         {
             if (isDisposed) return;
 
-            var elapsed = TimeMeasurement.GetElapsedTime(lastReceivedTimestamp, currentTimestamp);
+            var elapsed = TimeExtension.GetElapsedTime(lastReceivedTimestamp, currentTimestamp);
             if (elapsed > keepAliveDelay)
             {
                 // send ping per 5 seconds.
-                var ping = TimeMeasurement.GetElapsedTime(lastPingSent, currentTimestamp);
+                var ping = TimeExtension.GetElapsedTime(lastPingSent, currentTimestamp);
                 if (ping > PingInterval)
                 {
                     lastPingSent = currentTimestamp;
@@ -494,7 +502,7 @@ namespace KcpTransport
         {
             if (isDisposed) return;
 
-            // Send disconnect message
+            // Write disconnect message
             Span<byte> message = stackalloc byte[8];
             MemoryMarshal.Write(message, ref Unsafe.AsRef((uint)PacketType.Disconnect));
             MemoryMarshal.Write(message.Slice(4), ref Unsafe.AsRef(conversationId));
