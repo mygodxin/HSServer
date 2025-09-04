@@ -1,18 +1,17 @@
+using MemoryPack;
 using MessagePack;
 using System;
 
 namespace Core
 {
-    /// <summary>
-    /// 消息基类，所有能收发的消息都应该继承该类
-    /// </summary>
-    [MessagePackObject(true)]
-    public class Message
+    [MemoryPackable(GenerateType.NoGenerate)]
+    public partial interface IMessage
     {
+
     }
 
-    [MessagePackObject(true)]
-    public class MessageError : Message
+    [MemoryPackable]
+    public partial class MessageError : IMessage
     {
         public string Error;
     }

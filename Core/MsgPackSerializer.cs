@@ -1,6 +1,5 @@
 using Google.Protobuf;
-using MessagePack;
-using MessagePack.Resolvers;
+using MemoryPack;
 using Proto.Remote;
 
 namespace Core
@@ -10,27 +9,27 @@ namespace Core
     /// </summary>
     public class MsgPackSerializer : ISerializer
     {
-        private readonly MessagePackSerializerOptions _options;
+        private readonly MemoryPackSerializerOptions _options;
 
         public MsgPackSerializer()
         {
-            _options = MessagePackSerializerOptions.Standard
-                .WithResolver(CompositeResolver.Create(
-                    NativeDateTimeResolver.Instance,
-                    StandardResolver.Instance
-                ))
-                .WithCompression(MessagePackCompression.Lz4BlockArray);
+            //_options = MemoryPackSerializerOptions.
+            //    .WithResolver(CompositeResolver.Create(
+            //        NativeDateTimeResolver.Instance,
+            //        StandardResolver.Instance
+            //    ))
+            //    .WithCompression(MessagePackCompression.Lz4BlockArray);
         }
 
         public object Deserialize(ByteString bytes, string typeName)
         {
             var type = Type.GetType(typeName);
-            return MessagePackSerializer.Deserialize(type, bytes.ToByteArray(), _options);
+            return MemoryPackSerializer.Deserialize(type, bytes.ToByteArray(), _options);
         }
 
         public ByteString Serialize(object obj)
         {
-            return ByteString.CopyFrom(MessagePackSerializer.Serialize(obj.GetType(), obj, _options));
+            return ByteString.CopyFrom(MemoryPackSerializer.Serialize(obj.GetType(), obj, _options));
         }
 
         public string GetTypeName(object obj)
@@ -40,7 +39,7 @@ namespace Core
 
         public bool CanSerialize(object obj)
         {
-            return obj is Message;
+            return obj is IMessage;
         }
     }
 }

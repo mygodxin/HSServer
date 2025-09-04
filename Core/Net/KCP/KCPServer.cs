@@ -1,6 +1,5 @@
-using Core.Util;
+using Core.Protocol;
 using KcpTransport;
-using Proto;
 using System;
 using System.Net;
 using System.Net.Sockets;
@@ -43,8 +42,8 @@ namespace Core.Net.KCP
                     if (result == null) continue;
                     if (result.ConnectionId == 0) continue;
 
-                    KcpChannel socket = new KcpChannel(result);
-                    socket.SetListener((data) =>
+                    var socket = new KcpClient(result);
+                    socket.OnMessage = ((data) =>
                     {
                         OnReceiveData(data, socket);
                     });
@@ -67,7 +66,7 @@ namespace Core.Net.KCP
             GC.SuppressFinalize(this);
         }
 
-        private void OnReceiveData(byte[] buffer, NetChannel channel)
+        private void OnReceiveData(byte[] buffer, KcpClient channel)
         {
             MessageHandle.Read(buffer, channel);
         }

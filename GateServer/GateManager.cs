@@ -18,18 +18,18 @@ namespace GateServer
         {
             switch (context.Message)
             {
-                case UserLoginEvent msg:
-                    // 为新用户创建 Session Actor
-                    Logger.Info($"收到消息={msg.UserId}");
-                    var sessionProps = Props.FromProducer(() => new UserSession(msg.UserId));
-                    _sessions[msg.UserId] = context.Spawn(sessionProps);
-                    break;
+                //case UserLoginEvent msg:
+                //    // 为新用户创建 Session Actor
+                //    Logger.Info($"收到消息={msg.UserId}");
+                //    var sessionProps = Props.FromProducer(() => new UserSession(msg.UserId));
+                //    _sessions[msg.UserId] = context.Spawn(sessionProps);
+                //    break;
 
-                case int userId when _sessions.TryGetValue(userId, out var pid):
-                    // 踢出用户
-                    context.Stop(pid);
-                    _sessions.Remove(userId);
-                    break;
+                //case int userId when _sessions.TryGetValue(userId, out var pid):
+                //    // 踢出用户
+                //    context.Stop(pid);
+                //    _sessions.Remove(userId);
+                //    break;
             }
             return Task.CompletedTask;
         }

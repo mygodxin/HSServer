@@ -1,14 +1,15 @@
 using Core;
+using MemoryPack;
 using MessagePack;
+using Share.Message;
 
 namespace Share
 {
     /// <summary>
     /// 请求登陆
     /// </summary>
-    [MessagePackObject(true)]
-    [Union(0, typeof(ReqLogin))]
-    public class ReqLogin : Message
+    [MemoryPackable]
+    public partial class ReqLogin : ResLogin
     {
         public string Account;
         public string Password;
@@ -18,22 +19,22 @@ namespace Share
     /// <summary>
     /// 请求登陆回复
     /// </summary>
-    [MessagePackObject(true)]
-    public class ResLogin : Message
+    [MemoryPackable]
+    public partial class ResLogin : IMessage
     {
         public string Token { get; set; }
         public string GateAddress { get; set; } // "IP:Port"
     }
 
-    [MessagePackObject(true)]
-    public class GateForward
+    [MemoryPackable]
+    public partial class GateForward
     {
         public int UserId { get; set; }
         public byte[] GameData { get; set; }
     }
 
-    [MessagePackObject(true)]
-    public class UserLoginEvent
+    [MemoryPackable]
+    public partial class UserLoginEvent
     {
         public int UserId { get; set; }
     }

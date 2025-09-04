@@ -1,30 +1,27 @@
 using Core.Net;
-using Core.Util;
-using Luban;
 
-namespace Core
+namespace Core.Protocol
 {
     /// <summary>
     /// 
     /// </summary>
     public class MessageHandle
     {
-        public NetChannel Channel;
-        public Message Message;
+        public NetClient Channel;
+        public IMessage Message;
 
         public virtual void Excute()
         {
 
         }
 
-        public static byte[] Write(Message message)
+        public static byte[] Write(IMessage message)
         {
             var bytes = HSerializer.Serialize(message);
             int len = 8 + bytes.Length;
             var msgID = HandleManager.Instance.GetID(message.GetType());
-            Span<byte> span = stackalloc byte[len];
 
-            var buf = new ByteBuffer();
+            using var buf = new ByteBuffer();
             buf.WriteInt(len);
             buf.WriteInt(msgID);
             buf.WriteBytes(bytes);
@@ -32,13 +29,13 @@ namespace Core
             return buf.Bytes;
         }
 
-        public static void Read(byte[] buffer, NetChannel channel)
+        public static void Read(ReadOnlySpan<byte> buffer, NetClient channel)
         {
-            var buf = new ByteBuffer(buffer);
+            using var buf = new ByteBuffer(buffer);
             int msgLen = buf.ReadInt();
             int msgID = buf.ReadInt();
-            ReadOnlyMemory<byte> bytes = buf.ReadBytes();
-            var message = HSerializer.Deserialize<Message>(bytes);
+            ReadOnlySpan<byte> bytes = buf.ReadBytes();
+            var message = HSerializer.Deserialize<IMessage>(bytes);
             var handle = HandleManager.Instance.GetMessageHandle(msgID);
             if (handle != null)
             {

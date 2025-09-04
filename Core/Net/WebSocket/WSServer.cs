@@ -109,7 +109,7 @@ namespace Core.Net
                 //Debug.Log($"新客户端连接: {client.RemoteEndPoint}");
 
                 // 开始接收消息
-                await client.StartReceiving();
+                //await client.StartReceiving();
             }
             catch (Exception ex)
             {

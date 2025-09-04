@@ -4,11 +4,12 @@
 using Core;
 using Core.Net;
 using Core.Net.KCP;
-using Core.Util;
+using Core.Protocol;
 using Google.Protobuf.WellKnownTypes;
 using KcpTransport;
 using LoginServer;
 using Luban;
+using MemoryPack;
 using MessagePack;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
@@ -16,6 +17,7 @@ using Share;
 using System;
 using System.Diagnostics;
 using System.Net;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading.Channels;
@@ -40,6 +42,7 @@ namespace HSServer
             // 网关服务启动
             GateServer.GateServer.StartAsync();
 
+            TimerTest.Test();
             // 游戏服务启动
             TestKCP();
             //TestWS();
@@ -91,7 +94,7 @@ namespace HSServer
                     var messageData = new byte[receiveResult.Count];
                     Array.Copy(buffer.Array, buffer.Offset, messageData, 0, receiveResult.Count);
 
-                    var msg = MessagePackSerializer.Deserialize<Message>(messageData);
+                    var msg = MemoryPackSerializer.Deserialize<IMessage>(messageData);
                     times++;
 
                     // 每收到一条消息就发送响应（根据需求调整）
@@ -111,15 +114,15 @@ namespace HSServer
             var server = new KcpServer("127.0.0.1", 5000);
             await server.StartAsync();
             Logger.Info("服务器启动成功");
-            var client = new KcpChannel("127.0.0.1", 5000);
+            var client = new KcpClient("127.0.0.1", 5000);
             await client.ConnectAsync();
-            client.SetListener((buffer) =>
+            client.OnMessage = ((buffer) =>
             {
-                var buf = new ByteBuffer(buffer);
+                using var buf = new ByteBuffer(buffer);
                 int msgLen = buf.ReadInt();
                 int msgID = buf.ReadInt();
-                ReadOnlyMemory<byte> data = buf.ReadBytes();
-                var message = (ReqLogin)HSerializer.Deserialize<Message>(data);
+                ReadOnlySpan<byte> data = buf.ReadBytes();
+                var message = (ReqLogin)HSerializer.Deserialize<IMessage>(data);
                 Logger.Info($"[Client Recive] " + message.Account);
             });
             var time = Stopwatch.GetTimestamp();
@@ -134,7 +137,17 @@ namespace HSServer
                     login.Account = input;
                     login.Password = "123456";
                     login.Platform = "taptap";
-                    client.Send(login);
+
+                    //var bytes = HSerializer.Serialize(login);
+                    //int len = 8 + bytes.Length;
+                    //var msgID = HandleManager.Instance.GetID(login.GetType());
+
+                    //var buf = new ByteBuffer();
+                    //buf.WriteInt(len);
+                    //buf.WriteInt(msgID);
+                    //buf.WriteBytes(bytes);
+
+                    client.Send(MessageHandle.Write(login));
                 }
             }
             //while (true)

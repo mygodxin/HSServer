@@ -1,5 +1,6 @@
 
 using Core.Net;
+using Core.Protocol;
 using System.Reflection;
 
 namespace Core
@@ -70,6 +71,38 @@ namespace Core
         }
 
         public bool AddHttpHandle(Type type)
+        {
+            var attribute = (HttpCommondAttribute)type.GetCustomAttribute(typeof(HttpCommondAttribute));
+            if (attribute == null) return false;
+            var commond = attribute.Commond;
+
+            if (!_httpHandles.ContainsKey(commond))
+                _httpHandles.Add(commond, type);
+            else
+            {
+                Logger.Error($"add olready has commond:{commond}");
+            }
+            return true;
+        }
+
+        public HttpHandle GetTimerHandle(string commond)
+        {
+            if (_httpHandles.TryGetValue(commond, out var type))
+            {
+                var inst = Activator.CreateInstance(type);
+                if (inst is HttpHandle handle)
+                {
+                    return handle;
+                }
+                else
+                {
+                    throw new Exception($"GetMessageHandle error:{inst.GetType().FullName}");
+                }
+            }
+            return null;
+        }
+
+        public bool AddTimerHandle(Type type)
         {
             var attribute = (HttpCommondAttribute)type.GetCustomAttribute(typeof(HttpCommondAttribute));
             if (attribute == null) return false;

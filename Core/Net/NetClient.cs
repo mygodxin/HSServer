@@ -1,14 +1,16 @@
+using Core.Net;
 using System.Net;
 
 namespace Core
 {
     /// <summary>
-    /// 通用网络接口
+    /// 连接基类
     /// </summary>
-    public class NetChannel
+    public class NetClient
     {
         public IPEndPoint RemoteAddress { get; set; }
         protected readonly int MAX_MESSAGE_LEN = 1400;
+        public Action<byte[]> OnMessage;
 
         public virtual Task ConnectAsync()
         {
@@ -20,14 +22,8 @@ namespace Core
             return Task.CompletedTask;
         }
 
-        public virtual Task SendAsync(Message message)
+        public virtual void Send(byte[] data)
         {
-            return Task.CompletedTask;
-        }
-
-        public virtual Task SendErrorAsync(string error)
-        {
-            return Task.CompletedTask;
         }
     }
 }

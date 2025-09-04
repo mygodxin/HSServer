@@ -9,6 +9,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using static KcpTransport.LowLevel.KcpMethods;
 
 namespace KcpTransport
@@ -135,7 +137,7 @@ namespace KcpTransport
             var conversationId = MemoryMarshal.Read<uint>(handshakeBuffer.AsSpan(4));
             SendHandshakeOkRequest(socket, handshakeBuffer);
 
-            var received2 = await socket.ReceiveAsync(handshakeBuffer);
+            var received2 = await socket.ReceiveAsync(handshakeBuffer, SocketFlags.None);
             if (received2 != 4) throw new Exception();
             var responseCode = (PacketType)MemoryMarshal.Read<uint>(handshakeBuffer);
 
@@ -147,13 +149,15 @@ namespace KcpTransport
             static void SendHandshakeInitialRequest(Socket socket)
             {
                 Span<byte> data = stackalloc byte[4];
-                MemoryMarshal.Write(data, ref Unsafe.AsRef((uint)PacketType.HandshakeInitialRequest));
+                var msgId = (uint)PacketType.HandshakeInitialRequest;
+                MemoryMarshal.Write(data, ref msgId);
                 socket.Send(data);
             }
 
             static void SendHandshakeOkRequest(Socket socket, Span<byte> data)
             {
-                MemoryMarshal.Write(data, ref Unsafe.AsRef((uint)PacketType.HandshakeOkRequest));
+                var msgId = (uint)PacketType.HandshakeOkRequest;
+                MemoryMarshal.Write(data, ref msgId);
                 socket.Send(data);
             }
         }
@@ -203,8 +207,10 @@ namespace KcpTransport
 
                             unsafe
                             {
-                                var socketBufferPointer = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(socketBuffer.AsSpan()));
-                                if (!InputReceivedKcpBuffer(socketBufferPointer, received)) continue;
+                                fixed (byte* socketBufferPointer = socketBuffer)
+                                {
+                                    if (!InputReceivedKcpBuffer(socketBufferPointer, received)) continue;
+                                }
                             }
 
                             ConsumeKcpFragments(null, cancellationToken);
@@ -290,7 +296,10 @@ namespace KcpTransport
                     }
                     catch (Exception e)
                     {
+#if !UNITY_64
                         Logger.Error(e.ToString());
+#else
+#endif
                     }
                     finally
                     {
@@ -329,8 +338,9 @@ namespace KcpTransport
             try
             {
                 var span = rent.AsSpan();
-                MemoryMarshal.Write(span, ref Unsafe.AsRef((uint)PacketType.Unreliable));
-                MemoryMarshal.Write(span.Slice(4), ref Unsafe.AsRef(kcp->conv));
+                var msgId = (uint)PacketType.Unreliable;
+                MemoryMarshal.Write(span, ref msgId);
+                MemoryMarshal.Write(span.Slice(4), ref kcp->conv);
                 buffer.CopyTo(span.Slice(8));
 
                 lock (gate)
@@ -401,8 +411,9 @@ namespace KcpTransport
                 {
                     lastPingSent = currentTimestamp;
                     Span<byte> pingBuffer = stackalloc byte[8];
-                    MemoryMarshal.Write(pingBuffer, ref Unsafe.AsRef((uint)PacketType.Ping));
-                    MemoryMarshal.Write(pingBuffer.Slice(4), ref Unsafe.AsRef(conversationId));
+                    var msgId = (uint)PacketType.Ping;
+                    MemoryMarshal.Write(pingBuffer, ref msgId);
+                    MemoryMarshal.Write(pingBuffer.Slice(4), ref conversationId);
                     lock (gate)
                     {
                         if (isDisposed) return;
@@ -419,8 +430,9 @@ namespace KcpTransport
 
             // send Pong
             Span<byte> pongBuffer = stackalloc byte[8];
-            MemoryMarshal.Write(pongBuffer, ref Unsafe.AsRef((uint)PacketType.Pong));
-            MemoryMarshal.Write(pongBuffer.Slice(4), ref Unsafe.AsRef(conversationId));
+            var msgId = (uint)PacketType.Pong;
+            MemoryMarshal.Write(pongBuffer, ref msgId);
+            MemoryMarshal.Write(pongBuffer.Slice(4), ref conversationId);
 
             lock (gate)
             {
@@ -504,8 +516,10 @@ namespace KcpTransport
 
             // Write disconnect message
             Span<byte> message = stackalloc byte[8];
-            MemoryMarshal.Write(message, ref Unsafe.AsRef((uint)PacketType.Disconnect));
-            MemoryMarshal.Write(message.Slice(4), ref Unsafe.AsRef(conversationId));
+            var disconnect = (uint)PacketType.Disconnect;
+            MemoryMarshal.Write(message, ref disconnect);
+            MemoryMarshal.Write(message.Slice(4), ref conversationId);
+
             lock (gate)
             {
                 socket.Send(message);

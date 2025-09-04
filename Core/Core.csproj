@@ -25,12 +25,13 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="MessagePack" Version="3.1.4" />
+    <PackageReference Include="MemoryPack" Version="1.21.4" />
     <PackageReference Include="MongoDB.Driver" Version="3.4.0" />
     <PackageReference Include="NLog" Version="5.5.0" />
     <PackageReference Include="NLog.Web.AspNetCore" Version="5.5.0" />
     <PackageReference Include="Proto.Actor" Version="1.7.0" />
     <PackageReference Include="Proto.Remote" Version="1.7.0" />
+    <PackageReference Include="Quartz" Version="3.14.0" />
   </ItemGroup>
 
 </Project>

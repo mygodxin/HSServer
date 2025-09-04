@@ -4,9 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Core.MessageExtension.PolymorphicMessagePack
+namespace Core.Timers
 {
-    public class PolyIgnore : Attribute
+    /// <summary>
+    /// 全局计时器
+    /// </summary>
+    public class GlobalTimer
     {
     }
 }

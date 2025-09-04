@@ -4,7 +4,7 @@ using System.Net;
 
 namespace Core.Net
 {
-    public interface IClient
+    public interface ISocketClient
     {
         void OnConnected();
         void OnDisconnected();

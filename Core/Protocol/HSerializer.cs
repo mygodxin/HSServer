@@ -1,3 +1,4 @@
+using MemoryPack;
 using MessagePack;
 using System;
 using System.Collections.Generic;
@@ -5,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Core.Util
+namespace Core.Protocol
 {
     /// <summary>
     /// 序列化实现
@@ -20,9 +21,9 @@ namespace Core.Util
         /// <param name="options"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public static byte[] Serialize<T>(T value, MessagePackSerializerOptions? options = null, CancellationToken cancellationToken = default)
+        public static byte[] Serialize<T>(T value, MemoryPackSerializerOptions? options = null)
         {
-            return MessagePackSerializer.Serialize(value, options, cancellationToken);
+            return MemoryPackSerializer.Serialize(value, options);
         }
 
         /// <summary>
@@ -33,9 +34,9 @@ namespace Core.Util
         /// <param name="options"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public static T Deserialize<T>(ReadOnlyMemory<byte> buffer, MessagePackSerializerOptions? options = null, CancellationToken cancellationToken = default)
+        public static T Deserialize<T>(ReadOnlySpan<byte> buffer, MemoryPackSerializerOptions? options = null)
         {
-            return MessagePackSerializer.Deserialize<T>(buffer, options, cancellationToken);
+            return MemoryPackSerializer.Deserialize<T>(buffer, options);
         }
     }
 }

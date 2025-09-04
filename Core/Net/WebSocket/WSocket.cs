@@ -6,7 +6,7 @@ using System.Net.WebSockets;
 
 namespace Core.Net
 {
-    public class WSocket : NetChannel
+    public class WSocket : NetClient
     {
         private WebSocket _webSocket;
         private readonly ConcurrentQueue<byte[]> _receiveQueue = new ConcurrentQueue<byte[]>();
@@ -142,7 +142,7 @@ namespace Core.Net
             // 在主线程处理接收到的数据
             while (_receiveQueue.TryDequeue(out byte[] data))
             {
-                OnDataReceived?.Invoke(data);
+                //OnDataReceived?.Invoke(data);
             }
         }
 

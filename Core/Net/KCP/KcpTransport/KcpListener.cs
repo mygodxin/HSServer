@@ -1,12 +1,15 @@
 using KcpTransport.LowLevel;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace KcpTransport
 {
@@ -295,8 +298,10 @@ namespace KcpTransport
                                 {
                                     unsafe
                                     {
-                                        var socketBufferPointer = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(socketBuffer.AsSpan()));
-                                        if (!kcpConnection.InputReceivedKcpBuffer(socketBufferPointer, received)) continue;
+                                        fixed (byte* socketBufferPointer = socketBuffer)
+                                        {
+                                            if (!kcpConnection.InputReceivedKcpBuffer(socketBufferPointer, received)) continue;
+                                        }
                                     }
 
                                     kcpConnection.ConsumeKcpFragments(remoteEndPoint, cancellationToken);
@@ -326,14 +331,16 @@ namespace KcpTransport
             static void SendHandshakeOkResponse(Socket socket, IPEndPoint clientAddress)
             {
                 var data = new byte[4];
-                MemoryMarshal.Write(data, ref Unsafe.AsRef((uint)PacketType.HandshakeOkResponse));
+                var msgId = (uint)PacketType.HandshakeOkResponse;
+                MemoryMarshal.Write(data, ref msgId);
                 socket.SendTo(data, SocketFlags.None, clientAddress);
             }
 
             static void SendHandshakeNgResponse(Socket socket, IPEndPoint clientAddress)
             {
                 var data = new byte[4];
-                MemoryMarshal.Write(data, ref Unsafe.AsRef((uint)PacketType.HandshakeNgResponse));
+                var msgId = (uint)PacketType.HandshakeNgResponse;
+                MemoryMarshal.Write(data, ref msgId);
                 socket.SendTo(data, SocketFlags.None, clientAddress);
             }
         }
