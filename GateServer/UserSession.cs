@@ -22,9 +22,6 @@ namespace GateServer
         {
             switch (context.Message)
             {
-                case GateForward msg:
-                    break;
-
                 case byte[] gameData: // 从 GameServer 返回的响应
                                       // 发送回客户端（伪代码）
                                       // clientSocket.Write(gameData);

@@ -9,9 +9,7 @@ using KcpTransport;
 using LoginServer;
 using Luban;
 using Share;
-using System;
 using System.Diagnostics;
-using System.Net.WebSockets;
 
 namespace HSServer
 {
@@ -34,8 +32,10 @@ namespace HSServer
             GateServer.GateServer.StartAsync();
 
             // 游戏服务启动
-            TestKCP();
+            //TestKCP();
             //TestWS();
+            TestLogin();
+
             while (true)
             {
                 var input = Console.ReadLine();
@@ -53,50 +53,69 @@ namespace HSServer
         private static CancellationTokenSource _cancel;
         private static async void TestWS()
         {
-            _cancel = new CancellationTokenSource();
-            var client = new ClientWebSocket();
-            Console.WriteLine($"[Client] 开始连接");
-            await client.ConnectAsync(new Uri("ws://localhost:3000/ws"), _cancel.Token);
-            Console.WriteLine($"[Client] 连接成功");
-            var buffer = new ArraySegment<byte>(new byte[4096]); // 使用适当大小的缓冲区
-            var login = new ReqLogin();
-            login.Account = "123456";
-            login.Password = "123456";
-            login.Platform = "taptap";
-            var time = Stopwatch.GetTimestamp();
-            Logger.Warn($"[ws]开始发送:{time}");
-            var times = 0;
-            // 发送初始登录消息
-            await client.SendAsync(
-                MessageHandle.Write(login),
-                WebSocketMessageType.Binary,
-                true,
-                _cancel.Token);
+            //_cancel = new CancellationTokenSource();
+            //var client = new ClientWebSocket();
+            //Console.WriteLine($"[Client] 开始连接");
+            //await client.ConnectAsync(new Uri("ws://localhost:3000/ws"), _cancel.Token);
+            //Console.WriteLine($"[Client] 连接成功");
+            //var buffer = new ArraySegment<byte>(new byte[4096]); // 使用适当大小的缓冲区
+            //var login = new ReqLogin();
+            //login.Account = "123456";
+            //login.Password = "123456";
+            //login.Platform = "taptap";
+            //var time = Stopwatch.GetTimestamp();
+            //Logger.Warn($"[ws]开始发送:{time}");
+            //var times = 0;
+            //// 发送初始登录消息
+            //await client.SendAsync(
+            //    MessageHandle.Write(login),
+            //    WebSocketMessageType.Binary,
+            //    true,
+            //    _cancel.Token);
 
-            while (client.State == WebSocketState.Open && !_cancel.IsCancellationRequested)
+            //while (client.State == WebSocketState.Open && !_cancel.IsCancellationRequested)
+            //{
+            //    // 接收消息
+            //    var receiveResult = await client.ReceiveAsync(buffer, _cancel.Token);
+
+            //    if (receiveResult.Count > 0)
+            //    {
+            //        // 处理接收到的消息
+            //        var messageData = new byte[receiveResult.Count];
+            //        Array.Copy(buffer.Array, buffer.Offset, messageData, 0, receiveResult.Count);
+
+            //        var msg = HSerializer.Deserialize<IMessage>(messageData);
+            //        times++;
+
+            //        // 每收到一条消息就发送响应（根据需求调整）
+            //        await client.SendAsync(MessageHandle.Write(login), WebSocketMessageType.Binary, true, _cancel.Token);
+
+            //        if (times >= 1000)
+            //        {
+            //            break;
+            //        }
+            //    }
+            //}
+            //Logger.Warn($"[ws]结束发送:{Stopwatch.GetElapsedTime(time).TotalSeconds}");
+        }
+
+        private static async void TestLogin()
+        {
+            var client = new NetCoreServer.HttpClient("127.0.0.1", 8081);
+            client.ConnectAsync();
+            while (true)
             {
-                // 接收消息
-                var receiveResult = await client.ReceiveAsync(buffer, _cancel.Token);
-
-                if (receiveResult.Count > 0)
+                var input = Console.ReadLine();
+                if (input != null)
                 {
-                    // 处理接收到的消息
-                    var messageData = new byte[receiveResult.Count];
-                    Array.Copy(buffer.Array, buffer.Offset, messageData, 0, receiveResult.Count);
+                    var login = new ReqLogin();
+                    login.Account = input;
+                    login.Password = "123456";
+                    login.Platform = "taptap";
 
-                    var msg = HSerializer.Deserialize<IMessage>(messageData);
-                    times++;
-
-                    // 每收到一条消息就发送响应（根据需求调整）
-                    await client.SendAsync(MessageHandle.Write(login), WebSocketMessageType.Binary, true, _cancel.Token);
-
-                    if (times >= 1000)
-                    {
-                        break;
-                    }
+                    client.Send(MessageHandle.Write(login));
                 }
             }
-            Logger.Warn($"[ws]结束发送:{Stopwatch.GetElapsedTime(time).TotalSeconds}");
         }
 
         private static async void TestKCP()

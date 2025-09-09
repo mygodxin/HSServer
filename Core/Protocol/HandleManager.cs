@@ -45,7 +45,6 @@ namespace Core
             if (attribute == null) return false;
             var msgType = attribute.MessageType;
             var id = GetID(msgType);
-            Logger.Warn($"[add] {id}");
             if (!_msgHandles.ContainsKey(id))
                 _msgHandles.Add(id, type);
             else

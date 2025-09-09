@@ -1,10 +1,11 @@
 using Core;
-using Core.Net.Http;
+using NetCoreServer;
 using Proto;
 
 using Proto.Remote;
 using Proto.Remote.GrpcNet;
 using Share;
+using System.Net;
 
 namespace LoginServer
 {
@@ -13,19 +14,14 @@ namespace LoginServer
     /// </summary>
     public class LoginServer
     {
-        private static HttpServer _http;
+        private static SecureWebSocketServer _http;
+        private static int _port = 8080;
+        private static ActorSystem _system;
 
         public static async void StartAsync()
         {
-            InitActorSystem();
-            InitListener();
-            await Task.Delay(-1);
-        }
-
-        private static async void InitActorSystem()
-        {
             var remoteConfig = GrpcNetRemoteConfig
-                .BindTo("127.0.0.1", 8000)
+                .BindTo("127.0.0.1", _port)
                 .WithRemoteKind("login_server", Props.FromProducer(() => new LoginHandler()))
                 .WithSerializer(10, 10, new MsgPackSerializer());
             var system = new ActorSystem()
@@ -33,21 +29,79 @@ namespace LoginServer
             await system
                .Remote()
                .StartAsync();
+            _system = system;
 
-            var prop = Props.FromProducer(() => new LoginHandler());
-            var pid = system.Root.Spawn(prop);
-            system.Root.Send(pid, new ReqLogin { Account = "mdx", Password = "123456", Platform = "Test" });
+            Console.WriteLine("Starting secure WebSocket server...");
+
+            // 创建安全WebSocket服务器
+            var server = new SecureWebSocketServer(
+                IPAddress.Any, // 监听所有网络接口
+                8080           // WebSocket端口
+            );
+            _http = server;
+            // 启动服务器
+            if (server.Start())
+            {
+                Console.WriteLine($"Server started on port {server.Port}");
+
+                // 创建监控器
+                var monitor = new SecurityMonitor(server);
+
+                // 控制台命令处理
+                Console.WriteLine("Enter 'stats' to view statistics, 'exit' to stop server");
+
+                // 在后台线程中处理控制台输入
+                var inputThread = new Thread(() =>
+                {
+                    string command;
+                    while ((command = Console.ReadLine()) != "exit")
+                    {
+                        if (command == "stats")
+                            monitor.PrintStats();
+                        else if (command.StartsWith("blacklist "))
+                        {
+                            var ip = command.Substring(10);
+                            server.IpBlacklist.AddToBlacklist(ip, true);
+                            Console.WriteLine($"IP {ip} added to blacklist");
+                        }
+                        else if (command.StartsWith("unblacklist "))
+                        {
+                            var ip = command.Substring(12);
+                            server.IpBlacklist.RemoveFromBlacklist(ip);
+                            Console.WriteLine($"IP {ip} removed from blacklist");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Unknown command");
+                        }
+                    }
+
+                    // 停止服务器
+                    Console.WriteLine("Stopping server...");
+                    server.Stop();
+                    Console.WriteLine("Server stopped");
+                });
+
+                inputThread.IsBackground = true;
+                inputThread.Start();
+
+                // 等待服务器停止
+                while (server.IsStarted)
+                {
+                    Thread.Sleep(100);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Failed to start server!");
+            }
         }
 
-        private static async void InitListener()
+        public static async void StopAsync()
         {
-            _http = new HttpServer();
-            await _http.Start(20000);
+            _http.Stop();
+            await _system.ShutdownAsync();
         }
 
-        public static async Task StopAsync()
-        {
-            await _http.Stop();
-        }
     }
 }
