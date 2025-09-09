@@ -293,19 +293,16 @@ namespace Core.Timers
                 try
                 {
                     var param = context.JobDetail.JobDataMap.Get(PARAM_KEY) as object;
-                    //var handler = HandleManager.Instance.GetHttpHandle.GetInstance<ITimerHandler>(handlerType);
-                    //if (handler != null)
-                    //{
-                    //    var actorId = context.JobDetail.JobDataMap.GetLong(ACTOR_ID_KEY);
-                    //    var agentType = handler.GetType().BaseType.GenericTypeArguments[0];
-                    //    var comp = await ActorMgr.GetCompAgent(actorId, agentType);
-                    //    comp.Tell(() => handler.InnerHandleTimer(comp, param));
-
-                    //}
-                    //else
-                    //{
-                    //    Logger.Error($"错误的ITimer类型，回调失败 type:{handlerType}");
-                    //}
+                    var handler = HandleManager.Instance.GetTimerHandle(handlerType);
+                    if (handler != null)
+                    {
+                        var actorId = context.JobDetail.JobDataMap.GetLong(ACTOR_ID_KEY);
+                        handler.HandleTimer(actorId, param);
+                    }
+                    else
+                    {
+                        Logger.Error($"错误的ITimer类型，回调失败 type:{handlerType}");
+                    }
                 }
                 catch (Exception e)
                 {

@@ -11,6 +11,7 @@ namespace Hotfix
         public Task Run(params string[] args)
         {
             Console.WriteLine("[HotfixEnter] Run");
+            TimerTest.Test();
             return Task.CompletedTask;
         }
     }

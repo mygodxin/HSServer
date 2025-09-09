@@ -1,4 +1,5 @@
 using Core.Net;
+using Luban;
 
 namespace Core.Protocol
 {
@@ -21,7 +22,7 @@ namespace Core.Protocol
             int len = 8 + bytes.Length;
             var msgID = HandleManager.Instance.GetID(message.GetType());
 
-            using var buf = new ByteBuffer();
+            var buf = new ByteBuf();
             buf.WriteInt(len);
             buf.WriteInt(msgID);
             buf.WriteBytes(bytes);
@@ -31,7 +32,7 @@ namespace Core.Protocol
 
         public static void Read(ReadOnlySpan<byte> buffer, NetClient channel)
         {
-            using var buf = new ByteBuffer(buffer);
+            var buf = new ByteBuf(buffer.ToArray());
             int msgLen = buf.ReadInt();
             int msgID = buf.ReadInt();
             ReadOnlySpan<byte> bytes = buf.ReadBytes();

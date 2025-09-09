@@ -5,7 +5,7 @@ namespace Core.Timers
 {
     public interface ITimerHandler
     {
-        void HandleTimer(IActor actor, object param);
+        void HandleTimer(long actor, object param);
     }
 
     public abstract class NotHotfixTimerHandler : IJob

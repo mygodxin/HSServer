@@ -1,6 +1,7 @@
 
 using Core.Net;
 using Core.Protocol;
+using Core.Timers;
 using System.Reflection;
 
 namespace Core
@@ -9,6 +10,7 @@ namespace Core
     {
         private Dictionary<int, Type> _msgHandles = new Dictionary<int, Type>();
         private Dictionary<string, Type> _httpHandles = new Dictionary<string, Type>();
+        private Dictionary<string, Type> _timeHandles = new Dictionary<string, Type>();
 
         /// <summary>
         /// 获取message唯一ID
@@ -80,17 +82,17 @@ namespace Core
                 _httpHandles.Add(commond, type);
             else
             {
-                Logger.Error($"add olready has commond:{commond}");
+                Logger.Error($"add olready has fullName:{commond}");
             }
             return true;
         }
 
-        public HttpHandle GetTimerHandle(string commond)
+        public ITimerHandler GetTimerHandle(string commond)
         {
-            if (_httpHandles.TryGetValue(commond, out var type))
+            if (_timeHandles.TryGetValue(commond, out var type))
             {
                 var inst = Activator.CreateInstance(type);
-                if (inst is HttpHandle handle)
+                if (inst is ITimerHandler handle)
                 {
                     return handle;
                 }
@@ -104,15 +106,15 @@ namespace Core
 
         public bool AddTimerHandle(Type type)
         {
-            var attribute = (HttpCommondAttribute)type.GetCustomAttribute(typeof(HttpCommondAttribute));
-            if (attribute == null) return false;
-            var commond = attribute.Commond;
+            var handler = type.GetInterface(typeof(ITimerHandler).FullName);
+            if (handler == null) return false;
+            var fullName = type.FullName;
 
-            if (!_httpHandles.ContainsKey(commond))
-                _httpHandles.Add(commond, type);
+            if (!_timeHandles.ContainsKey(fullName))
+                _timeHandles.Add(fullName, type);
             else
             {
-                Logger.Error($"add olready has commond:{commond}");
+                Logger.Error($"add olready has timer:{fullName}");
             }
             return true;
         }

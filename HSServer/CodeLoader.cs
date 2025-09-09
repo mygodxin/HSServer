@@ -41,8 +41,8 @@ namespace HSServer
             _assemblyLoadContexts.TryGetValue(assemblyName, out var oldContext);
             oldContext?.Unload();
             oldContext = new AssemblyLoadContext(assemblyName, true);
-            byte[] dllBytes = File.ReadAllBytes($"./{assemblyName}.dll");
-            byte[] pdbBytes = File.ReadAllBytes($"./{assemblyName}.pdb");
+            byte[] dllBytes = File.ReadAllBytes($"./Hotfix/{assemblyName}.dll");
+            byte[] pdbBytes = File.ReadAllBytes($"./Hotfix/{assemblyName}.pdb");
             var assembly = oldContext.LoadFromStream(new MemoryStream(dllBytes), new MemoryStream(pdbBytes));
             return assembly;
         }
@@ -65,7 +65,7 @@ namespace HSServer
                 var types = assembly.GetTypes();
                 foreach (var type in types)
                 {
-                    if (!HandleManager.Instance.AddMessageHandle(type) && !HandleManager.Instance.AddHttpHandle(type))
+                    if (!HandleManager.Instance.AddMessageHandle(type) && !HandleManager.Instance.AddHttpHandle(type) && !HandleManager.Instance.AddTimerHandle(type))
                     {
                         var hotfixStart = type.GetInterface(typeof(IHotfixRun).FullName);
                         if (hotfixStart != null)

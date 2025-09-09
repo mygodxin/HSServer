@@ -24,15 +24,15 @@ namespace Core.Net.KCP
             _port = port;
         }
 
-        public Action<byte[]> OnMessage
+        public Action<byte[]> OnReceived
         {
             set
             {
-                _connect.OnMessage += value;
+                _connect.OnReceived += value;
             }
             get
             {
-                return _connect.OnMessage;
+                return _connect.OnReceived;
             }
         }
 

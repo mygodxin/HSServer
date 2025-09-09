@@ -34,7 +34,7 @@ namespace KcpTransport
     // KcpConnections is both used for server and client
     public class KcpConnection : IDisposable
     {
-        public Action<byte[]> OnMessage;
+        public Action<byte[]> OnReceived;
         private byte[] _receiveBuffer = new byte[(int)KcpMethods.IKCP_MTU_DEF];
 
         static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(5);
@@ -290,7 +290,7 @@ namespace KcpTransport
                             var len = ikcp_recv(kcp, p, buffer.Length);
                             if (len > 0)
                             {
-                                OnMessage?.Invoke(buffer);
+                                OnReceived?.Invoke(buffer);
                             }
                         }
                     }

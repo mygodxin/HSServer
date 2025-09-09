@@ -23,7 +23,7 @@ namespace HSServer
 
     public class DelayTimer : ITimerHandler
     {
-        public void HandleTimer(IActor actor, object param)
+        public void HandleTimer(long actor, object param)
         {
             Logger.Error("Test DelayTimer ");
         }

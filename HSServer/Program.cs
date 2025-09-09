@@ -5,22 +5,13 @@ using Core;
 using Core.Net;
 using Core.Net.KCP;
 using Core.Protocol;
-using Google.Protobuf.WellKnownTypes;
 using KcpTransport;
 using LoginServer;
 using Luban;
-using MemoryPack;
-using MessagePack;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Hosting;
 using Share;
 using System;
 using System.Diagnostics;
-using System.Net;
-using System.Net.Sockets;
 using System.Net.WebSockets;
-using System.Text;
-using System.Threading.Channels;
 
 namespace HSServer
 {
@@ -42,7 +33,6 @@ namespace HSServer
             // 网关服务启动
             GateServer.GateServer.StartAsync();
 
-            TimerTest.Test();
             // 游戏服务启动
             TestKCP();
             //TestWS();
@@ -94,7 +84,7 @@ namespace HSServer
                     var messageData = new byte[receiveResult.Count];
                     Array.Copy(buffer.Array, buffer.Offset, messageData, 0, receiveResult.Count);
 
-                    var msg = MemoryPackSerializer.Deserialize<IMessage>(messageData);
+                    var msg = HSerializer.Deserialize<IMessage>(messageData);
                     times++;
 
                     // 每收到一条消息就发送响应（根据需求调整）
@@ -116,9 +106,9 @@ namespace HSServer
             Logger.Info("服务器启动成功");
             var client = new KcpClient("127.0.0.1", 5000);
             await client.ConnectAsync();
-            client.OnMessage = ((buffer) =>
+            client.OnReceived = ((buffer) =>
             {
-                using var buf = new ByteBuffer(buffer);
+                var buf = new ByteBuf(buffer);
                 int msgLen = buf.ReadInt();
                 int msgID = buf.ReadInt();
                 ReadOnlySpan<byte> data = buf.ReadBytes();

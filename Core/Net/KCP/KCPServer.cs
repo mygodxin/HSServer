@@ -43,7 +43,7 @@ namespace Core.Net.KCP
                     if (result.ConnectionId == 0) continue;
 
                     var socket = new KcpClient(result);
-                    socket.OnMessage = ((data) =>
+                    socket.OnReceived = ((data) =>
                     {
                         OnReceiveData(data, socket);
                     });
