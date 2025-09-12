@@ -1,3 +1,4 @@
+using Hotfix.Login;
 using Microsoft.AspNetCore.Identity.Data;
 using Proto;
 using Proto.Remote;
@@ -16,7 +17,9 @@ namespace LoginServer
         {
             switch (context.Message)
             {
-                case ReqLogin req:
+                case LoginHandleData data:
+                    var url = data.Url;
+                    var req = data.ReqLogin;
                     // 1. 认证用户
                     var token = GenerateToken(req.Account);
 

@@ -1,6 +1,6 @@
 
+using Core;
 using HSServer;
-using NLog;
 using Proto;
 
 namespace Hotfix
@@ -8,11 +8,16 @@ namespace Hotfix
     [Hotfix]
     public class HotfixEnter : IHotfixRun
     {
-        public Task Run(params string[] args)
+        public async Task Run(params string[] args)
         {
             Console.WriteLine("[HotfixEnter] Run");
-            TimerTest.Test();
-            return Task.CompletedTask;
+
+            // º”‘ÿ≈‰÷√±Ì
+            ConfigLoader.Instance.Load();
+
+            Logger.Info($"{ConfigLoader.Instance.Tables.Tbitem[1001].Name}1111111");
+
+            LoginServer.LoginServer.StartAsync();
         }
     }
 }

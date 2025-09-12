@@ -24,14 +24,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
-    <ProjectReference Include="..\GameServer\GameServer.csproj" />
-    <ProjectReference Include="..\GateServer\GateServer.csproj" />
-    <ProjectReference Include="..\LoginServer\LoginServer.csproj" />
     <ProjectReference Include="..\Share\Share.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="Config\NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Config\ServerConfig.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
       <!-- 单个文件示例 -->
