@@ -1,7 +1,8 @@
 
 using Core;
 using HSServer;
-using Proto;
+using System;
+using System.Threading.Tasks;
 
 namespace Hotfix
 {
@@ -15,7 +16,7 @@ namespace Hotfix
             // º”‘ÿ≈‰÷√±Ì
             ConfigLoader.Instance.Load();
 
-            Logger.Info($"{ConfigLoader.Instance.Tables.Tbitem[1001].Name}1111111");
+            Logger.Info($"{ConfigLoader.Instance.Tables.Tbitem[1001].Name}111111222221");
 
             LoginServer.LoginServer.StartAsync();
         }

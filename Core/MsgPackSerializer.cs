@@ -1,6 +1,7 @@
 using Google.Protobuf;
 using MemoryPack;
 using Proto.Remote;
+using System;
 
 namespace Core
 {

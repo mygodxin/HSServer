@@ -1,7 +1,10 @@
-using Proto;
 using Quartz;
 using Quartz.Impl;
 using Quartz.Logging;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Core.Timers
 {

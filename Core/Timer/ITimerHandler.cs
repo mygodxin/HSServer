@@ -1,5 +1,5 @@
-using Proto;
 using Quartz;
+using System.Threading.Tasks;
 
 namespace Core.Timers
 {

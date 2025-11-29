@@ -5,9 +5,7 @@ using Proto;
 
 using Proto.Remote;
 using Proto.Remote.GrpcNet;
-using Share;
-using System.Net;
-using System.Net.Sockets;
+using System;
 
 namespace LoginServer
 {
@@ -33,7 +31,7 @@ namespace LoginServer
                .StartAsync();
             _system = system;
 
-			Console.WriteLine("Starting secure WebSocket server...");
+            Console.WriteLine("Starting secure WebSocket server...");
 
             // 创建安全WebSocket服务器
             var server = new LoginHttp(

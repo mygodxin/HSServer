@@ -8,7 +8,9 @@ using Core.Protocol;
 using Core.Util;
 using Luban;
 using Share;
+using System;
 using System.Diagnostics;
+using System.Threading;
 
 namespace HSServer
 {
@@ -25,8 +27,8 @@ namespace HSServer
 
             var startUp = new StartUp();
             startUp.Init();
-		}
-		private static CancellationTokenSource _cancel;
+        }
+        private static CancellationTokenSource _cancel;
         private static async void TestWS()
         {
         }
