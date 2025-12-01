@@ -9,14 +9,6 @@ namespace Hotfix.Login
     using System.Threading.Tasks;
 
 
-    // 服务器广播的消息
-    public partial class BroadcastMessage
-    {
-        public string Sender { get; set; }
-        public string Content { get; set; }
-        public DateTime Timestamp { get; set; }
-    }
-
     // 连接管理消息
     public partial class ClientConnected
     {
@@ -81,7 +73,7 @@ namespace Hotfix.Login
                     var bytesRead = await networkStream.ReadAsync(buffer, 0, buffer.Length);
                     if (bytesRead == 0) break;
 
-                    var messageData = System.Text.Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                    var messageData = buffer.AsSpan(0, bytesRead).ToArray();
                     Console.WriteLine($"Received from {connectionId}: {messageData}");
 
                     // 将消息发送给客户端Actor处理
@@ -110,6 +102,6 @@ namespace Hotfix.Login
     // 接收消息的辅助类
     public class MessageReceived
     {
-        public string Data { get; set; }
+        public byte[] Data { get; set; }
     }
 }

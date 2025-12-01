@@ -1,10 +1,10 @@
 ﻿// SessionManagerActor.cs
+using Core;
 using Proto;
 using Share;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 namespace Hotfix.Login;
 
@@ -18,7 +18,7 @@ public class UserSession
 
 public class SendMessage
 {
-    public string Data { get; set; }
+    public IMessage Data { get; set; }
 }
 
 public class SessionManagerActor : IActor
@@ -110,34 +110,19 @@ public class SessionManagerActor : IActor
         // 发送响应回客户端
         if (_connectedClients.TryGetValue(loginRequest.ConnectionId, out var clientActor))
         {
-            var responseJson = JsonSerializer.Serialize(new
-            {
-                type = "login_response",
-                success = response.Success,
-                message = response.Message,
-                token = response.Token
-            });
-            _context.Send(clientActor, new SendMessage { Data = responseJson });
+            _context.Send(clientActor, new SendMessage { Data = response });
         }
     }
 
     private void HandleBroadcastMessage(BroadcastMessage message)
     {
-        var broadcastJson = JsonSerializer.Serialize(new
-        {
-            type = "broadcast",
-            sender = message.Sender,
-            content = message.Content,
-            timestamp = message.Timestamp
-        });
-
         // 向所有认证的客户端广播消息
         foreach (var session in _authenticatedSessions.Values)
         {
             if (_connectedClients.TryGetValue(session.ConnectionId, out var clientActor))
             {
                 // 使用_context.Send而不是SendSystemMessage
-                _context.Send(clientActor, new SendMessage { Data = broadcastJson });
+                _context.Send(clientActor, new SendMessage { Data = message });
             }
         }
 

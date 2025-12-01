@@ -1,16 +1,15 @@
-﻿using System;
-
-namespace Hotfix.Login
+﻿namespace Hotfix.Login
 {
+    using Core;
+    using Core.Protocol;
     using Proto;
     using Share;
     // ClientActor.cs
     using System.Net.Sockets;
-    using System.Text;
     using System.Text.Json;
     using System.Threading.Tasks;
 
-    public class ClientActor : IActor
+    public class ClientActor : NetClient, IActor
     {
         private readonly TcpClient _client;
         private readonly PID _sessionManager;
@@ -35,73 +34,47 @@ namespace Hotfix.Login
                     break;
 
                 case SendMessage sendMessage:
-                    await SendDataToClient(sendMessage.Data);
+                    Send(sendMessage.Data);
                     break;
             }
         }
 
-        private async Task HandleMessageReceived(IContext context, string data)
+        private async Task HandleMessageReceived(IContext context, byte[] data)
         {
             try
             {
-                // 尝试解析JSON消息
-                using var jsonDoc = JsonDocument.Parse(data);
-                var root = jsonDoc.RootElement;
-
-                if (root.TryGetProperty("type", out var typeProperty))
+                var message = MessageHandle.Read(data, out var msgID);
+                switch (message)
                 {
-                    var messageType = typeProperty.GetString();
-
-                    switch (messageType)
-                    {
-                        case "login":
-                            var loginRequest = JsonSerializer.Deserialize<LoginRequest>(data);
-                            loginRequest.ConnectionId = _connectionId;
-                            context.Send(_sessionManager, loginRequest);
-                            break;
-
-                        case "message":
-                            var clientMessage = JsonSerializer.Deserialize<ClientMessage>(data);
-
-                            // 验证token
-                            if (!string.IsNullOrEmpty(clientMessage.Token) &&
-                                clientMessage.Token == _currentToken)
-                            {
-                                var broadcastMessage = new BroadcastMessage
-                                {
-                                    Sender = "User", // 实际应该从会话中获取用户名
-                                    Content = clientMessage.Content,
-                                    Timestamp = DateTime.Now
-                                };
-                                context.Send(_sessionManager, broadcastMessage);
-                            }
-                            else
-                            {
-                                await SendDataToClient(JsonSerializer.Serialize(new
-                                {
-                                    type = "error",
-                                    message = "Not authenticated"
-                                }));
-                            }
-                            break;
-                    }
+                    case LoginRequest loginRequest:
+                        loginRequest.ConnectionId = _connectionId;
+                        context.Send(_sessionManager, loginRequest);
+                        break;
+                    default:
+                        var handle = HandleManager.Instance.GetMessageHandle(msgID);
+                        if (handle != null)
+                        {
+                            handle.Channel = this;
+                            handle.Message = message;
+                            handle.Excute();
+                        }
+                        else
+                        {
+                            Logger.Error("recive error msg");
+                        }
+                        break;
                 }
             }
             catch (JsonException)
             {
-                await SendDataToClient(JsonSerializer.Serialize(new
-                {
-                    type = "error",
-                    message = "Invalid message format"
-                }));
             }
         }
 
-        private async Task SendDataToClient(string data)
+        public override async void Send(IMessage data)
         {
             if (_client.Connected)
             {
-                var bytes = Encoding.UTF8.GetBytes(data + "\n");
+                var bytes = MessageHandle.Write(data);
                 await _networkStream.WriteAsync(bytes, 0, bytes.Length);
                 await _networkStream.FlushAsync();
             }

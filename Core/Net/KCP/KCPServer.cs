@@ -1,9 +1,6 @@
-using Core.Protocol;
 using KcpTransport;
 using System;
 using System.Net;
-using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -42,11 +39,11 @@ namespace Core.Net.KCP
                     if (result == null) continue;
                     if (result.ConnectionId == 0) continue;
 
-                    var socket = new KcpClient(result);
-                    socket.OnReceived = ((data) =>
-                    {
-                        OnReceiveData(data, socket);
-                    });
+                    //var socket = new KcpClient(result);
+                    //socket.OnReceived = ((data) =>
+                    //{
+                    //    OnReceiveData(data, socket);
+                    //});
                 }
                 catch (OperationCanceledException)
                 {
@@ -66,9 +63,9 @@ namespace Core.Net.KCP
             GC.SuppressFinalize(this);
         }
 
-        private void OnReceiveData(byte[] buffer, KcpClient channel)
-        {
-            MessageHandle.Read(buffer, channel);
-        }
+        //private void OnReceiveData(byte[] buffer, KcpClient channel)
+        //{
+        //    MessageHandle.Read(buffer, channel);
+        //}
     }
 }

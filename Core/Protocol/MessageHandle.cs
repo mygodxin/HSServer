@@ -30,24 +30,13 @@ namespace Core.Protocol
             return buf.Bytes;
         }
 
-        public static void Read(ReadOnlySpan<byte> buffer, NetClient channel)
+        public static IMessage Read(ReadOnlySpan<byte> buffer, out int msgID)
         {
             var buf = new ByteBuf(buffer.ToArray());
             int msgLen = buf.ReadInt();
-            int msgID = buf.ReadInt();
+            msgID = buf.ReadInt();
             ReadOnlySpan<byte> bytes = buf.ReadBytes();
-            var message = HSerializer.Deserialize<IMessage>(bytes);
-            var handle = HandleManager.Instance.GetMessageHandle(msgID);
-            if (handle != null)
-            {
-                handle.Channel = channel;
-                handle.Message = message;
-                handle.Excute();
-            }
-            else
-            {
-                Logger.Error("recive error msg");
-            }
+            return HSerializer.Deserialize<IMessage>(bytes);
         }
     }
 }

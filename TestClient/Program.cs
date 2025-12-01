@@ -1,8 +1,9 @@
 ﻿// TcpClientExample.cs
+using Core;
+using Core.Protocol;
+using Luban;
 using Share;
 using System.Net.Sockets;
-using System.Text;
-using System.Text.Json;
 
 public class TcpClientExample
 {
@@ -32,33 +33,26 @@ public class TcpClientExample
 
     private async Task LoginAsync(string username, string password)
     {
-        var loginRequest = new
+        var loginRequest = new LoginRequest
         {
-            type = "login",
-            username = username,
-            password = password
+            Username = username,
+            Password = password
         };
-
-        var json = JsonSerializer.Serialize(loginRequest);
-        await SendAsync(json);
+        await SendAsync(loginRequest);
     }
 
-    private async Task SendMessageAsync(string content)
+    private async Task SendMessageAsync(string message)
     {
-        var message = new
+        var messageData = new ClientMessage
         {
-            type = "message",
-            content = content,
-            token = "your-token-here" // 实际应该从登录响应中获取
+            Content = message
         };
-
-        var json = JsonSerializer.Serialize(message);
-        await SendAsync(json);
+        await SendAsync(messageData);
     }
 
-    private async Task SendAsync(string data)
+    private async Task SendAsync(IMessage data)
     {
-        var bytes = Encoding.UTF8.GetBytes(data + "\n");
+        var bytes = MessageHandle.Write(data);
         await _stream.WriteAsync(bytes, 0, bytes.Length);
         await _stream.FlushAsync();
     }
@@ -73,29 +67,22 @@ public class TcpClientExample
             {
                 var bytesRead = await _stream.ReadAsync(dataBuffer, 0, dataBuffer.Length);
                 if (bytesRead == 0) break;
-
-                var message = Encoding.UTF8.GetString(dataBuffer, 0, bytesRead);
+                var buffer = dataBuffer.AsSpan(0, bytesRead);
+                var buf = new ByteBuf(buffer.ToArray());
+                int msgLen = buf.ReadInt();
+                int msgID = buf.ReadInt();
+                ReadOnlySpan<byte> bytes = buf.ReadBytes();
+                var message = HSerializer.Deserialize<IMessage>(bytes);
                 Console.WriteLine($"Received: {message}");
 
-                // 处理不同类型的消息
-                using var jsonDoc = JsonDocument.Parse(message);
-                if (jsonDoc.RootElement.TryGetProperty("type", out var typeProperty))
+                switch (message)
                 {
-                    var messageType = typeProperty.GetString();
-
-                    if (messageType == "login_response")
-                    {
-                        // 处理登录响应
-                        var response = JsonSerializer.Deserialize<LoginResponse>(message);
-                        if (response.Success)
-                        {
-                            Console.WriteLine($"Login successful! Token: {response.Token}");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Login failed: {response.Message}");
-                        }
-                    }
+                    case LoginResponse loginResponse:
+                        Console.WriteLine($"Login response: {loginResponse.Success} - {loginResponse.Message}");
+                        break;
+                    case ClientMessage clientMessage:
+                        Console.WriteLine($"Received message: {clientMessage.Content}");
+                        break;
                 }
             }
             catch (Exception ex)

@@ -1,6 +1,6 @@
+using Core.Protocol;
 using KcpTransport;
 using System;
-using System.Net;
 using System.Threading.Tasks;
 
 namespace Core.Net.KCP
@@ -41,9 +41,9 @@ namespace Core.Net.KCP
             _connect = await KcpConnection.ConnectAsync(_host, _port);
         }
 
-        public override void Send(byte[] message)
+        public override void Send(IMessage message)
         {
-            _connect.SendReliableBuffer(message);
+            _connect.SendReliableBuffer(MessageHandle.Write(message));
         }
 
         public Task DisconnectAsync()

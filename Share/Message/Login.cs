@@ -1,5 +1,6 @@
 using Core;
 using MemoryPack;
+using System;
 
 namespace Share
 {
@@ -27,5 +28,14 @@ namespace Share
     {
         public string Content { get; set; }
         public string Token { get; set; }
+    }
+
+    // 服务器广播的消息
+    [MemoryPackable]
+    public partial class BroadcastMessage : IMessage
+    {
+        public string Sender { get; set; }
+        public string Content { get; set; }
+        public DateTime Timestamp { get; set; }
     }
 }
