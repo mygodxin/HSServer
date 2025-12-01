@@ -1,18 +1,16 @@
 using Core;
 using Core.Protocol;
-using LoginServer;
 using Share;
-using System;
 
-namespace Hotfix
+namespace Hotfix.Login
 {
-    [MessageType(typeof(ReqLogin))]
+    [MessageType(typeof(LoginRequest))]
     public class ReqLoginHandle : MessageHandle
     {
         public override void Excute()
         {
-            var reqLogin = Message as ReqLogin;
-            var account = reqLogin.Account;
+            var reqLogin = Message as LoginRequest;
+            var account = reqLogin.Username;
             var channel = Channel;
             if (string.IsNullOrEmpty(account))
             {
@@ -24,7 +22,7 @@ namespace Hotfix
             //session.Account = account;
             //session.LoginTime = DateTime.UtcNow;
             //session.Channel = channel;
-            reqLogin.Account = reqLogin.Account + "1";
+            reqLogin.Username = reqLogin.Username + "1";
             channel.Send(Write(reqLogin));
         }
         public void OnLogin()
