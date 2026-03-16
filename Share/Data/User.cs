@@ -1,9 +1,8 @@
-using MemoryPack;
 using MessagePack;
 
 namespace Share
 {
-    [MemoryPackable]
+    [MessagePackObject(true)]
     public partial class User
     {
         /// <summary>

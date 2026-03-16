@@ -11,7 +11,7 @@ namespace Hotfix.Login
         {
             var reqLogin = Message as LoginRequest;
             var account = reqLogin.Username;
-            var channel = Channel;
+            var channel = Transport;
             if (string.IsNullOrEmpty(account))
             {
                 //channel.SendError("账号不能为空");
@@ -25,6 +25,7 @@ namespace Hotfix.Login
             reqLogin.Username = reqLogin.Username + "1";
             channel.Send(reqLogin);
         }
+
         public void OnLogin()
         {
 

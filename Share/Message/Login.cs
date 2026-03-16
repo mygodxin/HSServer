@@ -1,12 +1,11 @@
-using Core;
-using MemoryPack;
+using MessagePack;
 using System;
 
 namespace Share
 {
     // 客户端发送的登录请求
-    [MemoryPackable]
-    public partial class LoginRequest : IMessage
+    [MessagePackObject(true)]
+    public partial class LoginRequest : Core.Message
     {
         public string Username { get; set; }
         public string Password { get; set; }
@@ -14,8 +13,8 @@ namespace Share
     }
 
     // 服务器返回的登录响应
-    [MemoryPackable]
-    public partial class LoginResponse : IMessage
+    [MessagePackObject(true)]
+    public partial class LoginResponse : Core.Message
     {
         public bool Success { get; set; }
         public string Message { get; set; }
@@ -23,16 +22,16 @@ namespace Share
     }
 
     // 客户端发送的消息
-    [MemoryPackable]
-    public partial class ClientMessage : IMessage
+    [MessagePackObject(true)]
+    public partial class ClientMessage : Core.Message
     {
         public string Content { get; set; }
         public string Token { get; set; }
     }
 
     // 服务器广播的消息
-    [MemoryPackable]
-    public partial class BroadcastMessage : IMessage
+    [MessagePackObject(true)]
+    public partial class BroadcastMessage : Core.Message
     {
         public string Sender { get; set; }
         public string Content { get; set; }

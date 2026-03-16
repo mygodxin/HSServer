@@ -1,17 +1,16 @@
-using MemoryPack;
 using MessagePack;
 using System;
 
 namespace Core
 {
-    [MemoryPackable(GenerateType.NoGenerate)]
-    public partial interface IMessage
+    [MessagePackObject(true)]
+    public class Message
     {
 
     }
 
-    [MemoryPackable]
-    public partial class MessageError : IMessage
+    [MessagePackObject(true)]
+    public class MessageError : Message
     {
         public string Error;
     }

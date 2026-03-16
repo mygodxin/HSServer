@@ -1,4 +1,4 @@
-﻿using cfg;
+using cfg;
 using Core;
 using Luban;
 using System;
@@ -17,6 +17,11 @@ namespace Hotfix
                 var url = $"{Environment.CurrentDirectory}/GameConfig/Bin/{file}.bytes";
                 return new ByteBuf(File.ReadAllBytes(url));
             });
+
+            NetworkManager.Instance.Init();
+            NetworkManager.Instance.KcpStart();
+            NetworkManager.Instance.TcpStart();
+            Logger.Info($"{NetworkManager.Instance.TcpUri} {NetworkManager.Instance.KcpUri}");
         }
     }
 }

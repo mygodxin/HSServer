@@ -1,10 +1,5 @@
-using MemoryPack;
 using MessagePack;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Core.Protocol
 {
@@ -21,9 +16,9 @@ namespace Core.Protocol
         /// <param name="options"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public static byte[] Serialize<T>(T value, MemoryPackSerializerOptions? options = null)
+        public static byte[] Serialize<T>(T value, MessagePackSerializerOptions? options = null)
         {
-            return MemoryPackSerializer.Serialize(value, options);
+            return MessagePackSerializer.Serialize(value, options);
         }
 
         /// <summary>
@@ -34,9 +29,9 @@ namespace Core.Protocol
         /// <param name="options"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public static T Deserialize<T>(ReadOnlySpan<byte> buffer, MemoryPackSerializerOptions? options = null)
+        public static T Deserialize<T>(ReadOnlyMemory<byte> buffer, MessagePackSerializerOptions? options = null)
         {
-            return MemoryPackSerializer.Deserialize<T>(buffer, options);
+            return MessagePackSerializer.Deserialize<T>(buffer, options);
         }
     }
 }

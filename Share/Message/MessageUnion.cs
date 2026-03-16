@@ -1,13 +1,11 @@
-using Core;
-using MemoryPack;
+using MessagePack;
 
 namespace Share.Message
 {
-    [MemoryPackUnionFormatter(typeof(IMessage))]
-    [MemoryPackUnion(0, typeof(LoginRequest))]
-    [MemoryPackUnion(1, typeof(LoginResponse))]
-    [MemoryPackUnion(2, typeof(ClientMessage))]
-    [MemoryPackUnion(3, typeof(BroadcastMessage))]
+    [Union(0, typeof(LoginRequest))]
+    [Union(1, typeof(LoginResponse))]
+    [Union(2, typeof(ClientMessage))]
+    [Union(3, typeof(BroadcastMessage))]
     public partial class MessageUnion
     {
     }

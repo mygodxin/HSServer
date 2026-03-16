@@ -1,9 +1,5 @@
-using Core.Net;
+using Core.NetCore.Transports;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Core.Session
 {
@@ -25,7 +21,7 @@ namespace Core.Session
         /// <summary>
         /// 连接上下文
         /// </summary>
-        public NetClient Channel { get; set; }
+        public ClientTransport Transport { get; set; }
 
         /// <summary>
         /// 连接标示，避免自己顶自己的号,客户端每次启动游戏生成一次/或者每个设备一个

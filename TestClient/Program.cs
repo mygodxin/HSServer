@@ -1,4 +1,4 @@
-﻿// TcpClientExample.cs
+// TcpClientExample.cs
 using Core;
 using Core.Protocol;
 using Luban;
@@ -50,7 +50,7 @@ public class TcpClientExample
         await SendAsync(messageData);
     }
 
-    private async Task SendAsync(IMessage data)
+    private async Task SendAsync(Message data)
     {
         var bytes = MessageHandle.Write(data);
         await _stream.WriteAsync(bytes, 0, bytes.Length);
@@ -71,8 +71,8 @@ public class TcpClientExample
                 var buf = new ByteBuf(buffer.ToArray());
                 int msgLen = buf.ReadInt();
                 int msgID = buf.ReadInt();
-                ReadOnlySpan<byte> bytes = buf.ReadBytes();
-                var message = HSerializer.Deserialize<IMessage>(bytes);
+                ReadOnlyMemory<byte> bytes = buf.ReadBytes();
+                var message = HSerializer.Deserialize<Message>(bytes);
                 Console.WriteLine($"Received: {message}");
 
                 switch (message)

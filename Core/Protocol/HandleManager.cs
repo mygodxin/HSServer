@@ -1,5 +1,3 @@
-
-using Core.Net;
 using Core.Protocol;
 using Core.Timers;
 using System;
